@@ -1,17 +1,43 @@
 <?php
 
 /**
+ * Merges system and local configurations with special handling for patterns and descriptions.
+ * @param array $system System-wide configuration.
+ * @param array $local Local application configuration.
+ * @return array The resulting merged configuration.
+ */
+function mergeConfigs(array $system, array $local): array {
+    $merged = array_replace_recursive($system, $local);
+
+    $merged['ignorePatterns'] = array_unique(array_merge(
+        $system['ignorePatterns'] ?? [],
+        $local['ignorePatterns'] ?? []
+    ));
+
+    $merged['descriptions'] = array_merge(
+        $system['descriptions'] ?? [],
+        $local['descriptions'] ?? []
+    );
+
+    return $merged;
+}
+
+/**
  * Parses Apache autoindex.conf to extract configuration rules.
  * * @param string $filePath Path to the .conf file
  * @return array Parsed configuration
  */
 function parseAutoindexConf(string $filePath): array {
     $config = [
-        'icons' => [],           // Extension based
-        'iconsByType' => [],     // MIME type based
-        'iconsByEncoding' => [], // Encoding based
+        'iconsByToken' => [],
+        'iconsBySuffix' => [],
+        'iconsByExtension' => [],
+        'iconsByFilename' => [],
+        'iconsByType' => [],
+        'iconsByEncoding' => [],
         'defaultIcon' => '',
-        'ignorePatterns' => []
+        'ignorePatterns' => [],
+        'descriptions' => [],
     ];
 
     if (!file_exists($filePath)) return $config;
@@ -323,26 +349,34 @@ class FileInfoAnalyzer {
 
 /**
  * Scans a directory and returns an array of file information objects.
- * * @param string $path The physical path to scan.
- * @param array $ignorePatterns Patterns from Apache's IndexIgnore.
+ * @param string $physicalPath The physical path to scan.
+ * @param array $config Configuration settings.
  * @return array Collection of file data.
  * @throws UnexpectedValueException If the directory is not accessible.
  */
-function getFileList(string $path, array $ignorePatterns, bool $showHidden = false): array {
+function getFileList(string $physicalPath, array $config): array {
     $fileList = [];
 
     // Check if path is a directory and is readable
-    if (!is_dir($path) || !is_readable($path)) {
-        throw new UnexpectedValueException("Directory is not accessible: " . $path);
+    if (!is_dir($physicalPath) || !is_readable($physicalPath)) {
+        throw new UnexpectedValueException("Directory is not accessible: " . $physicalPath);
     }
 
-    $iterator = new DirectoryIterator($path);
+    // 1. Parse local BBS/ION descriptions first
+    $localDescriptions = parseLocalDescriptions($physicalPath);
+    $config['descriptions'] = array_merge($config['descriptions'], $localDescriptions);
+
+    // 2. Merge with priority: Local files overwrite config patterns
+    // array_merge ensures exact filename matches from BBS are found 
+    // in resolveDescription's Priority #1 check.
+
+    $iterator = new DirectoryIterator($physicalPath);
 
     foreach ($iterator as $fileInfo) {
         $filename = $fileInfo->getFilename();
 
         // Use our earlier isIgnored() logic
-        if (isIgnored($filename, $ignorePatterns) && !$showHidden) {
+        if (isIgnored($filename, $config['ignorePatterns']) && !$config['showHiddenFiles']) {
             continue;
         }
 
@@ -360,7 +394,8 @@ function getFileList(string $path, array $ignorePatterns, bool $showHidden = fal
                 'is_broken' => $isLink && !$exists,
                 'size'      => ($fileInfo->isDir() || ($isLink && !$exists)) ? 0 : $fileInfo->getSize(),
                 'mtime'     => ($isLink && !$exists) ? time() : $fileInfo->getMTime(),
-                'extension' => strtolower($fileInfo->getExtension())
+                'extension' => strtolower($fileInfo->getExtension()),
+                'description' => resolveDescription($fileInfo, $config['descriptions']),
             ];
         } catch (Exception $e) {
             // If something still fails (e.g. permission denied during getSize), 
@@ -373,36 +408,36 @@ function getFileList(string $path, array $ignorePatterns, bool $showHidden = fal
                 'is_broken' => true,
                 'size'      => 0,
                 'mtime'     => time(),
-                'extension' => ''
+                'extension' => '',
+                'description' => resolveDescription($fileInfo, $config['descriptions']),
             ];
         }
     }
+
+    resolveIcons($fileList, $config);
     return $fileList;
 }
 
 /**
- * Resolves icons and descriptions for a list of files.
+ * Resolves icons for a list of files.
  * @param array $fileList List of files with metadata
  * @param array $config Configuration settings
- * @return array Updated list with icons and descriptions
+ * @return array Updated list with icons
  */
-function resolveIconsAndDescriptions(array $fileList, array $config): array {
+function resolveIcons(array $fileList, array $config): array {
     $analyzer = new FileInfoAnalyzer();
+
     $fileList = array_map(function ($file) use ($config, $analyzer) {
+
         $file['icon'] = resolveIcon($file['info'], $config, $analyzer);
-        // Resolve Description using our new function
-        $file['description'] = resolveDescription(
-            $file['info'],
-            $config['descriptions'] ?? []
-        );
         return $file;
     }, $fileList);
+
     return $fileList;
 }
 
 /**
- * Resolves the description for a given file based on Apache's AddDescription rules.
- *
+ * Resolves the description for a given file based on $config['descriptions'].
  * @param SplFileInfo $file
  * @param array $descriptions List of descriptions from config ['target' => 'description']
  * @return string The resolved description or an empty string if no match found.
@@ -411,6 +446,8 @@ function resolveDescription(SplFileInfo $file, array $descriptions): string {
     if (empty($descriptions)) {
         return '';
     }
+
+    // Check for broken links as per original logic
     if ($file->isLink() && !$file->getRealPath()) {
         return $descriptions['.broken'] ?? 'Broken link';
     }
@@ -418,7 +455,9 @@ function resolveDescription(SplFileInfo $file, array $descriptions): string {
     $filename = $file->getFilename();
     $extension = '.' . strtolower($file->getExtension());
 
-    // 1. Priority: Exact filename match (e.g., README.txt)
+    // 1. Priority: Exact filename match (e.g., README.txt or files.bbs entry)
+    // Since we merged $localDescriptions last, if 'README.txt' exists 
+    // in files.bbs, it will be picked here first.
     if (isset($descriptions[$filename])) {
         return $descriptions[$filename];
     }
@@ -430,7 +469,6 @@ function resolveDescription(SplFileInfo $file, array $descriptions): string {
 
     // 3. Priority: Shell-style wildcard matching (e.g., *.txt, data_*)
     foreach ($descriptions as $pattern => $description) {
-        // Skip simple extensions already checked or non-wildcard patterns
         if (str_contains($pattern, '*') || str_contains($pattern, '?')) {
             if (fnmatch($pattern, $filename, FNM_CASEFOLD)) {
                 return $description;
@@ -439,6 +477,37 @@ function resolveDescription(SplFileInfo $file, array $descriptions): string {
     }
 
     return '';
+}
+
+/**
+ * Parses local description files (BBS style files.bbs or descript.ion).
+ *
+ * @param string $directory Physical path to the directory being scanned.
+ * @return array Associative array of [filename => description].
+ */
+function parseLocalDescriptions(string $directory): array {
+    $localDesc = [];
+    $targets = ['files.bbs', 'descript.ion', 'FILES.BBS', 'DESCRIPT.ION'];
+
+    foreach ($targets as $target) {
+        $path = $directory . DIRECTORY_SEPARATOR . $target;
+        if (file_exists($path) && is_readable($path)) {
+            $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                // Standard: filename description (supports quotes for filenames with spaces)
+                if (
+                    preg_match('/^"([^"]+)"\s+(.+)$/', $line, $matches) ||
+                    preg_match('/^(\S+)\s+(.+)$/', $line, $matches)
+                ) {
+                    $localDesc[$matches[1]] = $matches[2];
+                }
+            }
+            // Standard BBS: once a description file is found, we stop looking for others
+            break;
+        }
+    }
+    return $localDesc;
 }
 
 /**
@@ -502,19 +571,20 @@ function renderTableRows($fileList, $config): string {
 
 /**
  * Renders the complete HTML page for the file listing.
- * @param string $dir Current directory path
+ * @param string $path Current directory path
  * @param array $fileList List of files with metadata
  * @param array $config Configuration settings
  * @param array $breadcrumbs Breadcrumb navigation data
  */
-function renderHTML($dir, $fileList, $config, $breadcrumbs) {
+function renderHTML($path, $fileList, $config, $breadcrumbs) {
 ?>
     <!DOCTYPE html>
     <html>
 
     <head>
         <meta charset="utf-8">
-        <title>Index of /<?php echo htmlspecialchars(basename($dir)); ?></title>
+        <title>Index of <?php echo htmlspecialchars($path);
+                        echo htmlspecialchars($config['titleSuffix']); ?></title>
         <link rel="stylesheet" href="<?= KB_INDEX_URI; ?>kbIndex.css">
         <script src="<?= KB_INDEX_URI; ?>kbIndex.js"></script>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -552,9 +622,8 @@ function renderHTML($dir, $fileList, $config, $breadcrumbs) {
             </table>
         </form>
 
-        <footer><small>&copy; <?= date('Y'); ?> <a href="https://lukowastudio.com/">Łukowa Studio</a> &amp; <a href="https://kamilbaranski.com/">kamilbaranski.com</a></small></footer>
+        <footer><small>&copy; <?= date('Y') . ' ' . $config['footerUser']; ?> &amp; <a href="https://kamilbaranski.com/">kamilbaranski.com</a></small></footer>
 
-        <script src="include/js_sort.js"></script>
     </body>
 
     </html>

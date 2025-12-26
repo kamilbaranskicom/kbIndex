@@ -22,7 +22,6 @@ body::before {
     background-repeat: repeat;
 }
 
-/* style.css */
 .file-table {
     min-width: 50%;
     border-collapse: collapse;
@@ -68,4 +67,8 @@ body::before {
     margin-right: 5px;
     padding: 5px 10px;
     font-size: 14px;
+}
+footer {
+    border-top: 1px solid #ddd;
+    margin-top:20px;
 }

@@ -20,7 +20,7 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
     if (!$action) return;
 
     // Get legitimate files from the current directory to prevent unauthorized access
-    $allowedFiles = getFileList($physicalPath, $config['ignorePatterns']);
+    $allowedFiles = getFileList($physicalPath, $config);
     $allowedMap = [];
     foreach ($allowedFiles as $f) {
         $allowedMap[$f['name']] = $f['size_raw'] ?? 0;
