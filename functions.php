@@ -414,7 +414,7 @@ function getFileList(string $physicalPath, array $config): array {
         }
     }
 
-    resolveIcons($fileList, $config);
+    $fileList = resolveIcons($fileList, $config);
     return $fileList;
 }
 
@@ -552,16 +552,23 @@ function sortFileList(array $fileList, string $sortBy = 'name', string $order = 
  * @param array $config Configuration settings
  * @return string HTML table rows
  */
-function renderTableRows($fileList, $config): string {
+function renderTableRows($fileList): string {
     $html = '';
     foreach ($fileList as $file) {
         $html .= '<tr data-isdir="' . ($file['is_dir'] ? 1 : 0) . '">' . "\n";
-        $html .= '<td class="checkbox"><input type="checkbox" name="selected[]" value="' . htmlspecialchars($file['name']) . '"></td>' . "\n";
-        $html .= '<td class="icon"><img src="' . $file['icon'] . '" alt=""></td>' . "\n";
-        $html .= '<td><a href="' . rawurlencode($file['name']) . ($file['is_dir'] ? '/' : '') . '">' . htmlspecialchars($file['name']) . '</a></td>' . "\n";
-        $html .= '<td class="size" title="' . $file['size'] . ' bytes">' . ($file['is_dir'] ? '-' : humanSize($file['size'])) . '</td>' . "\n";
-        $html .= '<td>' . date("Y-m-d H:i", $file['mtime']) . '</td>' . "\n";
-        $html .= '<td>' . htmlspecialchars($file['description']) . '</td>' . "\n";
+
+        $html .= ' <td class="checkbox"><input type="checkbox" name="selected[]" value="' . htmlspecialchars($file['name']) . '"></td>' . "\n";
+
+        $html .= ' <td class="icon"><img src="' . $file['icon'] . '" alt=""></td>' . "\n";
+
+        $html .= ' <td><a href="' . rawurlencode($file['name']) . ($file['is_dir'] ? '/' : '') . '">' . htmlspecialchars($file['name']) . '</a></td>' . "\n";
+
+        $html .= ' <td data-value="' . $file['size'] . '" class="size" title="' . $file['size'] . ' bytes">' . ($file['is_dir'] ? '-' : humanSize($file['size'])) . '</td>' . "\n";
+
+        $html .= ' <td data-value="' . $file['mtime'] . '">' . date("Y-m-d H:i", $file['mtime']) . '</td>' . "\n";
+
+        $html .= ' <td>' . htmlspecialchars($file['description']) . '</td>' . "\n";
+
         $html .= '</tr>' . "\n\n";
     }
     return $html;
@@ -586,14 +593,14 @@ function renderHTML($path, $fileList, $config, $breadcrumbs) {
         <title>Index of <?php echo htmlspecialchars($path);
                         echo htmlspecialchars($config['titleSuffix']); ?></title>
         <link rel="stylesheet" href="<?= KB_INDEX_URI; ?>kbIndex.css">
-        <script src="<?= KB_INDEX_URI; ?>kbIndex.js"></script>
+        <script src="<?= KB_INDEX_URI; ?>kbIndex.js" defer></script>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
         <meta name="robots" content="noindex, nofollow">
     </head>
 
-    <body>
+    <body onload="sortTable(2)">
 
         <h1><?php echo getBreadcrumbsHtml($breadcrumbs); ?></h1>
 
@@ -608,15 +615,15 @@ function renderHTML($path, $fileList, $config, $breadcrumbs) {
                     <tr>
                         <th></th>
                         <th></th>
-                        <th class="sortable" data-sort="name" data-order="asc">Name</th>
-                        <th class="sortable" data-sort="size" data-order="asc">Size</th>
-                        <th class="sortable" data-sort="mtime" data-order="asc">Last modified</th>
-                        <th>Description</th>
+                        <th class="sortable" data-sort="name" data-order="asc" onclick="sortTable(2)" >Name</th>
+                        <th class="sortable" data-sort="size" data-order="asc" onclick="sortTable(3)" >Size</th>
+                        <th class="sortable" data-sort="mtime" data-order="asc" onclick="sortTable(4)" >Last modified</th>
+                        <th class="sortable" data-sort="description" data-order="asc" onclick="sortTable(5)" >Description</th>
                     </tr>
                 </thead>
                 <tbody>
 
-                    <?php echo renderTableRows($fileList, $config); ?>
+                    <?php echo renderTableRows($fileList); ?>
 
                 </tbody>
             </table>

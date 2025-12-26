@@ -72,3 +72,12 @@ footer {
     border-top: 1px solid #ddd;
     margin-top:20px;
 }
+th.asc::before { content: "↑ "; opacity: 0.8; }
+th.desc::before { content: "↓ "; opacity: 0.8; }
+TH[onclick] {
+    color: navy;
+    cursor: pointer;
+}
+th.desc, th.asc {
+    background-color: #d0d0d0;
+}
