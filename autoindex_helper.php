@@ -291,32 +291,6 @@ function resolveIcon(SplFileInfo $file, array $config, FileInfoAnalyzer $analyze
     return $config['defaultIcon'];
 }
 
-/**
- * Helper to get MIME encoding (e.g., gzip)
- */
-function getFileEncoding(string $path): ?string {
-    if (!file_exists($path)) return null;
-    $finfo = finfo_open(FILEINFO_MIME_ENCODING);
-    $encoding = finfo_file($finfo, $path);
-    finfo_close($finfo);
-
-    // Apache often uses 'x-gzip' instead of just 'gzip'
-    if ($encoding === 'gzip') return 'x-gzip';
-    if ($encoding === 'compress') return 'x-compress';
-
-    return ($encoding === 'binary') ? null : $encoding;
-}
-
-/**
- * Helper to get MIME type (e.g., image/png)
- */
-function getFileMimeType(string $path): ?string {
-    if (!file_exists($path)) return null;
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime = finfo_file($finfo, $path);
-    finfo_close($finfo);
-    return $mime;
-}
 
 /** 
  * Helper class to analyze file info (MIME type, encoding)
