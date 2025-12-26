@@ -8,7 +8,7 @@
 define('KB_INDEX_URI', '/kbIndex/'); // URL path to the tool folder
 
 require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/autoindex_helper.php';
+require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/zip_helper.php';
 
 

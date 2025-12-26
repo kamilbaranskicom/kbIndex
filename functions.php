@@ -1,8 +1,4 @@
 <?php
-// OK ... poprzednie funkcje: parseAutoindexConf, humanSize, isIgnored, breadcrumbs, pickIcon, readDirectory, sortDirectoryData, renderTableRows
-// --- poprzednie funkcje pozostają bez zmian: parseAutoindexConf, humanSize, isIgnored, breadcrumbs, pickIcon ---
-
-
 
 /**
  * Parses Apache autoindex.conf to extract configuration rules.
