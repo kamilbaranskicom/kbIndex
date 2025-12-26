@@ -160,53 +160,35 @@ function isIgnored(string $filename, array $ignorePatterns): bool {
     return false;
 }
 
-/** [old, tylko do porównania]
- * Generates breadcrumb navigation HTML for the current directory.
- * @param string $dir Current directory path
- * @return string HTML breadcrumb navigation
- */
-function breadcrumbs($dir): string {
-    $parts = array_filter(explode('/', str_replace('\\', '/', $dir)));
-    $path = '';
-    $html = '<a href="/">/</a>';
-    foreach ($parts as $p) {
-        $path .= "/$p";
-        $html .= " / <a href=\"$path\">$p</a>";
-    }
-    return $html;
-}
-
 /**
- * Generates breadcrumbs based on the request URI.
- *
- * @return array Array of [name, path] pairs.
+ * Generates breadcrumb array for the current request URI.
+ * @return array Array of breadcrumb items
  */
 function getBreadcrumbs(): array {
     $uriPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
     $uriPath = rawurldecode($uriPath);
 
-    // Clean path and split into segments
     $segments = array_values(array_filter(explode('/', $uriPath)));
-
     $breadcrumbs = [];
-    $breadcrumbs[] = [
-        'name' => '🏠',
-        'url' => '/'
-    ];
+    $breadcrumbs[] = ['name' => '🏠', 'url' => '/'];
 
     $accumulatedSegments = [];
+
+    // Get the actual physical location of the script to compare
+    $scriptUriPath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+    $scriptUriPath = trim($scriptUriPath, '/');
+
     foreach ($segments as $segment) {
-        // Skip the tool's directory from the breadcrumb list
-        if ($segment === 'kbIndex') continue;
-
         $accumulatedSegments[] = $segment;
+        $currentPath = '/' . implode('/', $accumulatedSegments) . '/';
 
-        // Re-encode each segment for the URL to keep it valid
-        $safeUrl = '/' . implode('/', array_map('rawurlencode', $accumulatedSegments)) . '/';
+        // OPTIONAL: Skip the tool folder ONLY if it's the ONLY segment 
+        // and we are listing a different directory. 
+        // But for consistency, it's often better to just show it.
 
         $breadcrumbs[] = [
             'name' => $segment,
-            'url'  => $safeUrl
+            'url'  => $currentPath
         ];
     }
 
@@ -336,8 +318,8 @@ function getFileMimeType(string $path): ?string {
     return $mime;
 }
 
-/**
- * Handles file metadata extraction using modern PHP finfo objects.
+/** 
+ * Helper class to analyze file info (MIME type, encoding)
  */
 class FileInfoAnalyzer {
     private finfo $mimeTypeDetector;
@@ -368,28 +350,6 @@ class FileInfoAnalyzer {
     }
 }
 
-/** [NIEPOTRZEBNE, tylko do porównania]
- * Reads the contents of a directory and gathers metadata.
- * @param string $dir Directory path
- * @param array $config Parsed apache configuration
- * @return array List of files with metadata
- */
-function readDirectory($dir, $config): array {
-    $items = array_diff(scandir($dir), ['.', '..']);
-    $data = [];
-    foreach ($items as $f) {
-        if (isIgnored($f, $config['ignorePatterns'])) continue;
-        $path = $dir . "/" . $f;
-        $is_dir = is_dir($path);
-        $size = $is_dir ? 0 : filesize($path);
-        $mtime = filemtime($path);
-        $desc = '';
-        $descFile = $path . '.description';
-        if (is_file($descFile)) $desc = trim(file_get_contents($descFile));
-        $data[] = ['name' => $f, 'is_dir' => $is_dir, 'size' => $size, 'mtime' => $mtime, 'desc' => $desc];
-    }
-    return $data;
-}
 
 /**
  * Scans a directory and returns an array of file information objects.
@@ -513,8 +473,8 @@ function resolveDescription(SplFileInfo $file, array $descriptions): string {
 
 /**
  * Sorts file list with directories always at the top.
- * * @param array $files The file list array.
- * @param string $sort Column to sort by: 'name', 'size', 'mtime'.
+ * @param array $fileList The file list array.
+ * @param string $sortBy Column to sort by: 'name', 'size', 'mtime'.
  * @param string $order Direction: 'asc' or 'desc'.
  * @return array Sorted array.
  */
@@ -571,10 +531,11 @@ function renderTableRows($fileList, $config): string {
 
 
 /**
- * Renders the complete HTML page for the directory listing.
+ * Renders the complete HTML page for the file listing.
  * @param string $dir Current directory path
- * @param array $files List of files with metadata
+ * @param array $fileList List of files with metadata
  * @param array $config Configuration settings
+ * @param array $breadcrumbs Breadcrumb navigation data
  */
 function renderHTML($dir, $fileList, $config, $breadcrumbs) {
 ?>
@@ -628,4 +589,11 @@ function renderHTML($dir, $fileList, $config, $breadcrumbs) {
 
     </html>
 <?php
+}
+
+function debug($var) {
+    echo '<hr><pre>';
+    //var_dump($var);
+    print_r($var);
+    echo '</pre></hr>';
 }

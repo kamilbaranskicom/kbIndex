@@ -2,18 +2,11 @@
 
 /***
  * todo:
- * - blokada w / (może po prostu nie nazywajmy tego index.php, tylko zróbmy na te wszystkie pliki folder typu include)
- * - ignore files (.ds_store, .htaccess, etc)
  * - fix downloads
- * - podepnij na cały serwis
- * - i sprawdź, czy działa w różnych scenariuszach
  */
 
 define('KB_INDEX_URI', '/kbIndex/'); // URL path to the tool folder
-define('KB_INDEX_PATH', __DIR__ . '/'); // Physical path to the tool folder
 
-// 3. Detect where we are
-// When called via DirectoryIndex, getcwd() is the target folder
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/autoindex_helper.php';
 require_once __DIR__ . '/zip_helper.php';
@@ -67,14 +60,8 @@ try {
 } catch (Exception $e) {
     die("Error: " . $e->getMessage());
 }
-// debug($fileList);
+
 
 // render HTML
 renderHTML($dir, $fileList, $config, $breadcrumbs);
 
-function debug($var) {
-    echo '<hr><pre>';
-    //var_dump($var);
-    print_r($var);
-    echo '</pre></hr>';
-}
