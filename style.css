@@ -1,0 +1,71 @@
+BODY {
+    margin:20px;
+  font-family: monospace, "Roboto", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: <weight>;
+  font-style: normal;
+  font-variation-settings:
+    "wdth" 100;
+}
+body::before {
+    transform: rotate(-20deg);
+    background-image: url(/img/lukowastudio-logo.svg);
+    background-size: 130px;
+    width: 300%;
+    height: 300%;
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    opacity: 10%;
+    content: "";
+    z-index: -1;
+    background-repeat: repeat;
+}
+
+/* style.css */
+.file-table {
+    min-width: 50%;
+    border-collapse: collapse;
+    /* font-family: Arial, sans-serif; */
+}
+.file-table th, .file-table td {
+    border-bottom: 1px solid #ddd;
+    padding: 6px 10px;
+    text-align: left;
+}
+.file-table th {
+    background-color: #f2f2f2;
+}
+.file-table tr:nth-child(even) {
+    background-color: #eaeaea4a;
+}
+.file-table tr:nth-child(odd) {
+    background-color: #ffffff4a;
+}
+
+.file-table .checkbox, .file-table .icon {
+    width:1em;
+    padding: 6px 5px;
+}
+.file-table .size {
+    text-align: right;
+}
+.breadcrumbs {
+    margin-bottom: 10px;
+    font-family: Arial, sans-serif;
+}
+.breadcrumbs a {
+    text-decoration: none;
+    color: #0073aa;
+}
+.breadcrumbs a:HOVER {
+    text-decoration:underline;
+}
+.download-buttons {
+    margin-top: 10px;
+}
+.download-buttons button {
+    margin-right: 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+}
