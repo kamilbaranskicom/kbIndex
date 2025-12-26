@@ -1,7 +1,10 @@
 <?php
 
 /**
- * Processes POST requests for downloading files as ZIP.
+ * Handles download requests for zipping files.
+ * @param string $physicalPath The physical directory path.
+ * @param array $config Configuration array including ignore patterns.
+ * @return void
  */
 function handleDownloadRequest(string $physicalPath, array $config): void {
     $toZip = [];
@@ -15,28 +18,30 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
 
     if (!$action) return;
 
+    // Get legitimate files in current directory to compare against
+    $allowedFiles = getFileList($physicalPath, $config['ignorePatterns']);
+    $allowedNames = array_column($allowedFiles, 'name');
+
     if ($action === 'all') {
-        $files = getFileList($physicalPath, $config['ignorePatterns']);
-        foreach ($files as $f) {
-            $toZip[] = $physicalPath . DIRECTORY_SEPARATOR . $f['name'];
+        foreach ($allowedNames as $name) {
+            $toZip[] = $physicalPath . DIRECTORY_SEPARATOR . $name;
         }
     } else {
         foreach ($_POST['selected'] as $name) {
-            // Security: strip directory separators to prevent path traversal
-            $safeName = str_replace(['/', '\\'], '', $name);
-            $fullPath = $physicalPath . DIRECTORY_SEPARATOR . $safeName;
-
-            if (file_exists($fullPath)) {
-                $toZip[] = $fullPath;
+            // 1. Basic cleaning
+            $name = basename($name); 
+            
+            // 2. Strict check: only allow if the file was found by our scanner
+            if (in_array($name, $allowedNames)) {
+                $toZip[] = $physicalPath . DIRECTORY_SEPARATOR . $name;
             }
         }
     }
 
     if (!empty($toZip)) {
-        // Get the folder name or 'root' if empty
         $folderName = basename($physicalPath) ?: 'home';
         streamZip($toZip, $folderName, $physicalPath);
-}
+    }
 }
 
 /**
@@ -50,33 +55,40 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
  * @return void
  */
 function streamZip(array $files, string $baseName, string $currentPath): void {
-    set_time_limit(900); // 15 minutes for larger sessions
+    set_time_limit(900);
 
-    // Generate Google Drive-style filename: name-YYYYMMDD-HHII.zip
-    $timestamp = date('Ymd-Hi');
+    $timestamp = date('Ymd_His');
     $safeBaseName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $baseName);
-    $finalFileName = "{$safeBaseName}-{$timestamp}.zip";
+    $finalFileName = "{$safeBaseName}_download_{$timestamp}.zip";
 
-    $tmpZip = tempnam(sys_get_temp_dir(), 'kbindex_');
-    $escapedTmpZip = escapeshellarg($tmpZip);
+    // tempnam creates a file, but 'zip' command expects to create it itself
+    // so we get a unique name and then delete the empty file tempnam created
+    $tmpZip = tempnam(sys_get_temp_dir(), 'kb_');
+    unlink($tmpZip);
+    $tmpZip .= '.zip';
 
     $oldDir = getcwd();
-    chdir($currentPath);
+    if (!chdir($currentPath)) {
+        throw new Exception("Cannot access directory: $currentPath");
+    }
 
-    // Prepare relative paths
+    // Prepare relative paths (just filenames in current folder)
     $relativeFiles = array_map(function ($path) {
         return escapeshellarg(basename($path));
     }, $files);
 
-    // -1: Fastest compression (efficient for silence/empty space)
-    // -r: Recursive for directories
-    // -q: Quiet mode
-    $cmd = "zip -1 -r $escapedTmpZip " . implode(' ', $relativeFiles);
+    // Build command with error redirection
+    $cmd = "zip -1 -r " . escapeshellarg($tmpZip) . " " . implode(' ', $relativeFiles) . " 2>&1";
 
     exec($cmd, $output, $returnCode);
     chdir($oldDir);
 
-    if ($returnCode === 0 && file_exists($tmpZip)) {
+    if ($returnCode !== 0) {
+        // This will tell us EXACTLY why it failed (e.g., "zip: command not found")
+        throw new Exception("ZIP Error (Code $returnCode): " . implode("\n", $output));
+    }
+
+    if (file_exists($tmpZip) && filesize($tmpZip) > 0) {
         if (ob_get_level()) ob_end_clean();
 
         header('Content-Type: application/zip');
@@ -86,10 +98,9 @@ function streamZip(array $files, string $baseName, string $currentPath): void {
         header('Pragma: no-cache');
 
         readfile($tmpZip);
-        unlink($tmpZip);
+        if (file_exists($tmpZip)) unlink($tmpZip);
         exit;
     }
 
-    if (file_exists($tmpZip)) unlink($tmpZip);
-    throw new Exception("ZIP creation failed. Check if 'zip' is installed and permissions are correct.");
+    throw new Exception("ZIP file is empty or was not created.");
 }
