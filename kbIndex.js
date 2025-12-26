@@ -65,7 +65,7 @@ function sortTable(columnIndex) {
 
   // 6. Update URL (using your setGetParameter)
   const sortParam = columnIndex + (direction === "desc" ? "" : "!");
-  window.history.pushState("page", "title", setGetParameter("sort", sortParam));
+  // window.history.pushState("page", "title", setGetParameter("sort", sortParam));
 }
 
 /**
