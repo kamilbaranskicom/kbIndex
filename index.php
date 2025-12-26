@@ -33,9 +33,18 @@ if (!is_dir($physicalPath)) {
 $breadcrumbs = getBreadcrumbs();
 
 
-
 // parse apache config and merge with default config
 $config = array_replace_recursive($config, parseAutoindexConf('/etc/apache2/mods-available/autoindex.conf'));
+
+
+
+
+// Handle download requests before any HTML is sent
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    handleDownloadRequest($physicalPath, $config);
+}
+
+
 
 /*
 // obsługa ZIP
@@ -64,4 +73,3 @@ try {
 
 // render HTML
 renderHTML($dir, $fileList, $config, $breadcrumbs);
-
