@@ -1,0 +1,13 @@
+# [kbIndex]
+# copy/move this file to the DocumentRoot of your website
+#
+
+# 1. Disable default listing
+Options -Indexes +FollowSymLinks
+
+# 2. Tell Apache what to do when no index file is found
+# This is much more reliable than mod_rewrite for directory indexing
+DirectoryIndex index.php index.html /kbIndex/index.php
+
+# 3. Handle cases where a file/folder is missing (optional but recommended)
+FallbackResource /kbIndex/index.php
