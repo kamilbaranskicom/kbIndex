@@ -210,8 +210,6 @@ function getBreadcrumbs(): array {
         ];
     }
 
-    debug($breadcrumbs);
-
     return $breadcrumbs;
 }
 
@@ -242,57 +240,72 @@ function getBreadcrumbsHtml(array $breadcrumbs): string {
 }
 
 /**
- * Resolves the correct icon for a given file based on Apache configuration.
- * Priority: 1. Tokens, 2. Encoding, 3. MIME Type, 4. Filename, 5. Extension, 6. Suffix
+ * Resolves the appropriate icon path for a file based on Apache's autoindex logic.
  *
  * @param SplFileInfo $file
- * @param array $config Parsed apache configuration
- * @return string Path to the icon
+ * @param array $config Parsed Apache configuration
+ * @param FileInfoAnalyzer $analyzer Metadata extractor
+ * @return string Path to the icon file
  */
 function resolveIcon(SplFileInfo $file, array $config, FileInfoAnalyzer $analyzer): string {
     $filename = $file->getFilename();
-    $realPath = $file->getRealPath();
+    $realPath = $file->getRealPath(); // Returns false for broken symlinks
 
-    // 1. Directory Token
+    // 1. Handle Broken Symlinks
+    // If it's a link but the target doesn't exist, we can't analyze content.
+    if ($file->isLink() && !$realPath) {
+        return $config['iconsByToken']['^^BROKEN^^']
+            ?? $config['iconsByExtension']['.broken']
+            ?? $config['defaultIcon'];
+    }
+
+    // 2. Directory Token
     if ($file->isDir()) {
         return $config['iconsByToken']['^^DIRECTORY^^'] ?? $config['defaultIcon'];
     }
 
-    // 2. Encoding (High priority in Apache)
-    $encoding = $analyzer->getEncoding($realPath);
-    if ($encoding && isset($config['iconsByEncoding'][$encoding])) {
-        return $config['iconsByEncoding'][$encoding];
-    }
-
-    // 3. MIME Type
-    $mimeType = $analyzer->getMimeType($realPath);
-    if ($mimeType) {
-        if (isset($config['iconsByType'][$mimeType])) {
-            return $config['iconsByType'][$mimeType];
+    // Only proceed with deep analysis if the file exists on disk
+    if ($realPath) {
+        // 3. Encoding (High priority in Apache, e.g., x-gzip)
+        $encoding = $analyzer->getEncoding($realPath);
+        if ($encoding && isset($config['iconsByEncoding'][$encoding])) {
+            return $config['iconsByEncoding'][$encoding];
         }
 
-        $mimeCategory = explode('/', $mimeType)[0] . '/*';
-        if (isset($config['iconsByType'][$mimeCategory])) {
-            return $config['iconsByType'][$mimeCategory];
+        // 4. MIME Type (e.g., image/png or audio/*)
+        $mimeType = $analyzer->getMimeType($realPath);
+        if ($mimeType && $mimeType !== 'application/octet-stream') {
+            if (isset($config['iconsByType'][$mimeType])) {
+                return $config['iconsByType'][$mimeType];
+            }
+
+            // Check for wildcard matches like 'image/*'
+            $mimeCategory = explode('/', $mimeType)[0] . '/*';
+            if (isset($config['iconsByType'][$mimeCategory])) {
+                return $config['iconsByType'][$mimeCategory];
+            }
         }
     }
 
-    // 4. Filename
+    // 5. Exact Filename Match (e.g., README)
     if (isset($config['iconsByFilename'][$filename])) {
         return $config['iconsByFilename'][$filename];
     }
 
-    // 5. Extension
-    $ext = '.' . $file->getExtension();
+    // 6. Extension Match (e.g., .php, .jpg)
+    $ext = '.' . strtolower($file->getExtension());
     if (isset($config['iconsByExtension'][$ext])) {
         return $config['iconsByExtension'][$ext];
     }
 
-    // 6. Suffix
-    foreach ($config['iconsBySuffix'] as $suffix => $icon) {
-        if (str_ends_with($filename, $suffix)) return $icon;
+    // 7. Suffix Match
+    if (!empty($config['iconsBySuffix'])) {
+        foreach ($config['iconsBySuffix'] as $suffix => $icon) {
+            if (str_ends_with($filename, $suffix)) return $icon;
+        }
     }
 
+    // Fallback to the default system icon
     return $config['defaultIcon'];
 }
 
@@ -447,11 +460,55 @@ function resolveIconsAndDescriptions(array $fileList, array $config): array {
     $analyzer = new FileInfoAnalyzer();
     $fileList = array_map(function ($file) use ($config, $analyzer) {
         $file['icon'] = resolveIcon($file['info'], $config, $analyzer);
-        // Here we can also add $file['description'] later
-        $file['description'] = '';
+        // Resolve Description using our new function
+        $file['description'] = resolveDescription(
+            $file['info'],
+            $config['descriptions'] ?? []
+        );
         return $file;
     }, $fileList);
     return $fileList;
+}
+
+/**
+ * Resolves the description for a given file based on Apache's AddDescription rules.
+ *
+ * @param SplFileInfo $file
+ * @param array $descriptions List of descriptions from config ['target' => 'description']
+ * @return string The resolved description or an empty string if no match found.
+ */
+function resolveDescription(SplFileInfo $file, array $descriptions): string {
+    if (empty($descriptions)) {
+        return '';
+    }
+    if ($file->isLink() && !$file->getRealPath()) {
+        return $descriptions['.broken'] ?? 'Broken link';
+    }
+
+    $filename = $file->getFilename();
+    $extension = '.' . strtolower($file->getExtension());
+
+    // 1. Priority: Exact filename match (e.g., README.txt)
+    if (isset($descriptions[$filename])) {
+        return $descriptions[$filename];
+    }
+
+    // 2. Priority: Exact extension match (e.g., .zip)
+    if (isset($descriptions[$extension])) {
+        return $descriptions[$extension];
+    }
+
+    // 3. Priority: Shell-style wildcard matching (e.g., *.txt, data_*)
+    foreach ($descriptions as $pattern => $description) {
+        // Skip simple extensions already checked or non-wildcard patterns
+        if (str_contains($pattern, '*') || str_contains($pattern, '?')) {
+            if (fnmatch($pattern, $filename, FNM_CASEFOLD)) {
+                return $description;
+            }
+        }
+    }
+
+    return '';
 }
 
 /**
