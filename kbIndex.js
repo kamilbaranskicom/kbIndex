@@ -60,14 +60,16 @@ function sortTable(columnName) {
 
     // Priority 3: Tie-breaker (if values are equal, sort by Name)
     if (comparison === 0 && columnName !== "name") {
-      // Index 2 to kolumna "name" wg Twojej tablicy TABLE_COLUMNS
+      // index 2 is "name" column (according to TABLE_COLUMNS)
       const nameA = a.children[2].innerText.trim();
       const nameB = b.children[2].innerText.trim();
       comparison2 = nameA.localeCompare(nameB, undefined, {
         numeric: true,
         sensitivity: "base",
       });
+      // APPLY DIRECTION
       if (direction === "desc") comparison2 *= -1;
+      
       return comparison2;
     }
 
@@ -94,10 +96,10 @@ function sortTable(columnName) {
  * @returns {string} Updated URL string
  */
 function updateURLParameters(newParams) {
-  // Tworzymy obiekt URL na bazie aktualnego adresu
+  // create a URL object from the current window location
   const url = new URL(window.location.href);
 
-  // Iterujemy po obiekcie i ustawiamy parametry
+  // iterate over the newParams object and set or delete parameters
   Object.entries(newParams).forEach(([key, value]) => {
     if (value === null || value === undefined) {
       url.searchParams.delete(key); // Opcjonalnie: usuń, jeśli wartość to null
