@@ -31,7 +31,7 @@ function sortTable(columnName) {
 
   // 4. Perform Sort
   rows.sort((a, b) => {
-    // Priority: Directories always first
+    // Priority 1: Directories always first
     const aDir = parseInt(a.dataset.isdir || 0);
     const bDir = parseInt(b.dataset.isdir || 0);
     if (aDir !== bDir) return bDir - aDir;
@@ -39,32 +39,39 @@ function sortTable(columnName) {
     // Data Retrieval
     const tdA = a.children[columnIndex];
     const tdB = b.children[columnIndex];
-
     let valA = tdA.dataset.value ?? tdA.innerText.trim();
     let valB = tdB.dataset.value ?? tdB.innerText.trim();
 
-    // Numeric vs Textual comparison
-    // Poprawiona logika wykrywania liczb:
-    // Sprawdzamy, czy columnName to 'size' lub 'mtime'
+    // Priority 2: Main comparison
+    let comparison = 0;
     const isNumeric = ["size", "mtime"].includes(columnName);
 
     if (isNumeric) {
-      // Compare as numbers (size_raw, mtime_raw)
-      return direction === "asc"
-        ? parseFloat(valA) - parseFloat(valB)
-        : parseFloat(valB) - parseFloat(valA);
+      comparison = parseFloat(valA) - parseFloat(valB);
     } else {
-      // Compare as text (filenames) - using localeCompare for "natural sort" (e.g. 2 < 10)
-      return direction === "asc"
-        ? valA.localeCompare(valB, undefined, {
-            numeric: true,
-            sensitivity: "base",
-          })
-        : valB.localeCompare(valA, undefined, {
-            numeric: true,
-            sensitivity: "base",
-          });
+      comparison = valA.localeCompare(valB, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
     }
+
+    // APPLY DIRECTION
+    if (direction === "desc") comparison *= -1;
+
+    // Priority 3: Tie-breaker (if values are equal, sort by Name)
+    if (comparison === 0 && columnName !== "name") {
+      // Index 2 to kolumna "name" wg Twojej tablicy TABLE_COLUMNS
+      const nameA = a.children[2].innerText.trim();
+      const nameB = b.children[2].innerText.trim();
+      comparison2 = nameA.localeCompare(nameB, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+      if (direction === "desc") comparison2 *= -1;
+      return comparison2;
+    }
+
+    return comparison;
   });
 
   // 5. Update DOM
