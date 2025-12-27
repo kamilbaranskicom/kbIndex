@@ -40,15 +40,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     handleDownloadRequest($physicalPath, $config);
 }
 
+$sort = $_GET['sort'] ?? 'name';
+$order = $_GET['order'] ?? 'asc';
+
 
 // 4. Get and Process File List
 try {
     $fileList = getFileList($physicalPath, $config);
-    $fileList = sortFileList($fileList, $_GET['sort'] ?? 'name', $_GET['order'] ?? 'asc');
+    $fileList = sortFileList($fileList, $sort, $order);
 } catch (Exception $e) {
     die("Error: " . $e->getMessage());
 }
 
 
 // render HTML
-renderHTML($requestUri, $fileList, $config, $breadcrumbs);
+renderHTML($requestUri, $fileList, $config, $breadcrumbs, $sort, $order);

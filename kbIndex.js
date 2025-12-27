@@ -1,8 +1,11 @@
 /**
  * Sorts the file table, manages UI indicators, and maintains directory priority.
- * @param {number} columnIndex - The index of the clicked TH.
+ * @param {string} columnName - The name of the clicked TH.
  */
-function sortTable(columnIndex) {
+function sortTable(columnName) {
+  const TABLE_COLUMNS = ["", "", "name", "ext", "size", "mtime", "description"];
+  const columnIndex = TABLE_COLUMNS.indexOf(columnName);
+
   const table = document.querySelector(".file-table");
   const tbody = table.querySelector("tbody");
   const headers = table.querySelectorAll("th");
@@ -41,7 +44,11 @@ function sortTable(columnIndex) {
     let valB = tdB.dataset.value ?? tdB.innerText.trim();
 
     // Numeric vs Textual comparison
-    if (tdA.dataset.value) {
+    // Poprawiona logika wykrywania liczb:
+    // Sprawdzamy, czy columnName to 'size' lub 'mtime'
+    const isNumeric = ["size", "mtime"].includes(columnName);
+
+    if (isNumeric) {
       // Compare as numbers (size_raw, mtime_raw)
       return direction === "asc"
         ? parseFloat(valA) - parseFloat(valB)
@@ -63,33 +70,34 @@ function sortTable(columnIndex) {
   // 5. Update DOM
   rows.forEach((row) => tbody.appendChild(row));
 
-  // 6. Update URL (using your setGetParameter)
-  const sortParam = columnIndex + (direction === "desc" ? "" : "!");
-  // window.history.pushState("page", "title", setGetParameter("sort", sortParam));
+  // 6. Update URL
+  window.history.pushState(
+    "page",
+    "title",
+    updateURLParameters({
+      sort: columnName,
+      order: direction === "desc" ? "desc" : "asc",
+    })
+  );
 }
 
 /**
- * Sets or updates a GET parameter in the URL.
- * @param {string} paramName - The name of the parameter to set.
- * @param {string} paramValue - The value of the parameter to set.
- * @returns {string} - The updated URL with the new parameter.
+ * Updates the URL parameters based on the provided object.
+ * @param {*} newParams
+ * @returns {string} Updated URL string
  */
-function setGetParameter(paramName, paramValue) {
-  var url = window.location.href;
-  var hash = location.hash;
-  url = url.replace(hash, "");
-  if (url.indexOf("?") >= 0) {
-    var params = url.substring(url.indexOf("?") + 1).split("&");
-    var paramFound = false;
-    params.forEach(function (param, index) {
-      var p = param.split("=");
-      if (p[0] == paramName) {
-        params[index] = paramName + "=" + paramValue;
-        paramFound = true;
-      }
-    });
-    if (!paramFound) params.push(paramName + "=" + paramValue);
-    url = url.substring(0, url.indexOf("?") + 1) + params.join("&");
-  } else url += "?" + paramName + "=" + paramValue;
-  return url + hash;
+function updateURLParameters(newParams) {
+  // Tworzymy obiekt URL na bazie aktualnego adresu
+  const url = new URL(window.location.href);
+
+  // Iterujemy po obiekcie i ustawiamy parametry
+  Object.entries(newParams).forEach(([key, value]) => {
+    if (value === null || value === undefined) {
+      url.searchParams.delete(key); // Opcjonalnie: usuń, jeśli wartość to null
+    } else {
+      url.searchParams.set(key, value);
+    }
+  });
+
+  return url.toString();
 }

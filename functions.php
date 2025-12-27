@@ -556,19 +556,13 @@ function renderTableRows($fileList): string {
     $html = '';
     foreach ($fileList as $file) {
         $html .= '<tr data-isdir="' . ($file['is_dir'] ? 1 : 0) . '">' . "\n";
-
         $html .= ' <td class="checkbox"><input type="checkbox" name="selected[]" value="' . htmlspecialchars($file['name']) . '"></td>' . "\n";
-
         $html .= ' <td class="icon"><img src="' . $file['icon'] . '" alt=""></td>' . "\n";
-
         $html .= ' <td><a href="' . rawurlencode($file['name']) . ($file['is_dir'] ? '/' : '') . '">' . htmlspecialchars($file['name']) . '</a></td>' . "\n";
-
+        $html .= ' <td data-value="' . pathinfo($file['name'])['extension'] . '"></td>' . "\n";
         $html .= ' <td data-value="' . $file['size'] . '" class="size" title="' . $file['size'] . ' bytes">' . ($file['is_dir'] ? '-' : humanSize($file['size'])) . '</td>' . "\n";
-
         $html .= ' <td data-value="' . $file['mtime'] . '">' . date("Y-m-d H:i", $file['mtime']) . '</td>' . "\n";
-
         $html .= ' <td>' . htmlspecialchars($file['description']) . '</td>' . "\n";
-
         $html .= '</tr>' . "\n\n";
     }
     return $html;
@@ -583,7 +577,7 @@ function renderTableRows($fileList): string {
  * @param array $config Configuration settings
  * @param array $breadcrumbs Breadcrumb navigation data
  */
-function renderHTML($path, $fileList, $config, $breadcrumbs) {
+function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $order = 'asc') {
 ?>
     <!DOCTYPE html>
     <html>
@@ -600,7 +594,7 @@ function renderHTML($path, $fileList, $config, $breadcrumbs) {
         <meta name="robots" content="noindex, nofollow">
     </head>
 
-    <body onload="sortTable(2)">
+    <body>
 
         <h1><?php echo getBreadcrumbsHtml($breadcrumbs); ?></h1>
 
@@ -615,10 +609,13 @@ function renderHTML($path, $fileList, $config, $breadcrumbs) {
                     <tr>
                         <th></th>
                         <th></th>
-                        <th class="sortable" data-sort="name" data-order="asc" onclick="sortTable(2)" >Name</th>
-                        <th class="sortable" data-sort="size" data-order="asc" onclick="sortTable(3)" >Size</th>
-                        <th class="sortable" data-sort="mtime" data-order="asc" onclick="sortTable(4)" >Last modified</th>
-                        <th class="sortable" data-sort="description" data-order="asc" onclick="sortTable(5)" >Description</th>
+                        <?php
+                        renderOneTH('name', 'Name', $sort, $order);
+                        renderOneTH('ext', 'Ext', $sort, $order);
+                        renderOneTH('size', 'Size', $sort, $order);
+                        renderOneTH('mtime', 'Last modified', $sort, $order);
+                        renderOneTH('description', 'Description', $sort, $order);
+                        ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -635,6 +632,15 @@ function renderHTML($path, $fileList, $config, $breadcrumbs) {
 
     </html>
 <?php
+}
+
+function renderOneTH($id, $longName, $sort, $order) {
+    echo '<th class="sortable';
+    if ($sort == $id) {
+        echo ' ' . $order;
+    }
+    echo '" data-sort="' . $id . '" data-order="asc" onclick="sortTable(\'' . $id . '\')"';
+    echo '>' . $longName . '</th>';
 }
 
 function debug($var) {
