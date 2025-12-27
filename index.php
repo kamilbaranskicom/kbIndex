@@ -25,7 +25,7 @@ if (!is_dir($physicalPath)) {
     // Optional: if someone accesses /files/a/file.txt directly, 
     // and your .htaccess sends it here, you might want to handle it.
     header("HTTP/1.1 404 Not Found");
-    die("Directory not found.");
+    die("404 not found.");  // was: directory not found
 }
 
 $breadcrumbs = getBreadcrumbs();

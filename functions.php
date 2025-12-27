@@ -611,7 +611,7 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
                         <th></th>
                         <?php
                         renderOneTH('name', 'Name', $sort, $order);
-                        renderOneTH('ext', 'Ext', $sort, $order);
+                        renderOneTH('ext', '.ext', $sort, $order);
                         renderOneTH('size', 'Size', $sort, $order);
                         renderOneTH('mtime', 'Last modified', $sort, $order);
                         renderOneTH('description', 'Description', $sort, $order);
