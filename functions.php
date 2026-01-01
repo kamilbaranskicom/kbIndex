@@ -662,7 +662,34 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
             </table>
         </form>
 
-        <footer><small>&copy; <?= date('Y') . ' ' . $config['footerUser']; ?></small></footer>
+        <footer>
+            <small>
+                <?php
+
+                $counts = array_reduce($fileList, function ($carry, $item) {
+                    // Treat 'is_dir' as boolean
+                    if (!empty($item['is_dir'])) {
+                        $carry['dirs']++;
+                    } else {
+                        $carry['files']++;
+                    }
+                    return $carry;
+                }, ['dirs' => 0, 'files' => 0]);
+
+                $dirCount  = $counts['dirs'] ?? 0; // true counts as 1
+                $fileCount = $counts['files'] ?? 0; // false counts as 0
+
+                echo '&copy; ' . date('Y') . ' ' . $config['footerUser'] . ' &#149; ';
+                echo 'Total ' . count($fileList) . ' items ';
+                echo '(directories: ' . $dirCount . ', ';
+                echo 'files: ' . $fileCount . '), ';
+                echo 'size: ' . humanSize(array_sum(array_column($fileList, 'size'))) . '. ';
+                echo 'Newest modification: ';
+                $newest = max(array_column($fileList, 'mtime'));
+                echo date("Y-m-d H:i", $newest) . '.';
+                ?>
+            </small>
+        </footer>
 
         <div id="status-box" class="hidden">
             <div id="status-content">
