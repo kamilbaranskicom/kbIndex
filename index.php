@@ -40,7 +40,8 @@ switch ($action) {
 
 function handleDownloadAction() {
     $tmpZip = $_GET('fileName') || die("No fileName given.");
-    if ($returnCode === 0 && file_exists($tmpZip)) {
+    //if ($returnCode === 0 && file_exists($tmpZip)) {
+    if (file_exists($tmpZip)) {
         if (ob_get_level()) ob_end_clean();
 
         header('Content-Type: application/zip');
