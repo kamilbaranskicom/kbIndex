@@ -157,6 +157,13 @@ function sendProgressStream($filePath, $totalWeight, $marker) {
     $startTime = time();
     $timeout = 300; // 5 minutes safety net
 
+    // Calculate stats for the user feedback
+    $stats = array_reduce($selectedFiles, function ($carry, $item) {
+        !empty($item['is_dir']) ? $carry['dirs']++ : $carry['files']++;
+        return $carry;
+    }, ['dirs' => 0, 'files' => 0]);
+
+
     while (true) {
         if (time() - $startTime > $timeout) break;
 
@@ -168,10 +175,15 @@ function sendProgressStream($filePath, $totalWeight, $marker) {
         $progress = ($totalWeight > 0) ? ($currentSize / $totalWeight) * 100 : 0;
         $progress = min($isDone ? 100 : 99, round($progress));
 
+        // Inside your SSE loop (send this once at the start or with every update)
         echo "data: " . json_encode([
             'percent' => $progress,
             'status' => $isDone ? 'completed' : 'compressing',
-            'fileName' => basename($filePath)
+            'fileName' => basename($filePath),
+            'stats' => [
+                'totalFolders' => $stats['dirs'],
+                'totalFiles' => $stats['files']
+            ]
         ]) . "\n\n";
 
         flush();
