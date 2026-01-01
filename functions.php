@@ -2,21 +2,21 @@
 
 /**
  * Merges system and local configurations with special handling for patterns and descriptions.
- * @param array $system System-wide configuration.
- * @param array $local Local application configuration.
+ * @param array $configA original configuration
+ * @param array $configB newer configuration
  * @return array The resulting merged configuration.
  */
-function mergeConfigs(array $system, array $local): array {
-    $merged = array_replace_recursive($system, $local);
+function mergeConfigs(array $configA, array $configB): array {
+    $merged = array_replace_recursive($configA, $configB);
 
     $merged['ignorePatterns'] = array_unique(array_merge(
-        $system['ignorePatterns'] ?? [],
-        $local['ignorePatterns'] ?? []
+        $configA['ignorePatterns'] ?? [],
+        $configB['ignorePatterns'] ?? []
     ));
 
     $merged['descriptions'] = array_merge(
-        $system['descriptions'] ?? [],
-        $local['descriptions'] ?? []
+        $configA['descriptions'] ?? [],
+        $configB['descriptions'] ?? []
     );
 
     return $merged;
@@ -593,7 +593,7 @@ function renderTableRows($fileList): string {
         $html .= ' <td class="checkbox"><label><input type="checkbox" name="selected[]" value="' . htmlspecialchars($file['name']) . '"></label></td>' . "\n";
         $html .= ' <td class="icon"><img src="' . $file['icon'] . '" alt=""></td>' . "\n";
         $html .= ' <td><a href="' . rawurlencode($file['name']) . ($file['is_dir'] ? '/' : '') . '">' . htmlspecialchars($file['name']) . '</a></td>' . "\n";
-        $html .= ' <td data-value="' . pathinfo($file['name'])['extension'] . '"></td>' . "\n";
+        $html .= ' <td data-value="' . (isset(pathinfo($file['name'])['extension']) ? pathinfo($file['name'])['extension'] : '') . '"></td>' . "\n";
         // [old]
         // $html .= ' <td data-value="' . $file['size'] . '" class="size" title="' . $file['size'] . ' bytes">' . ($file['is_dir'] ? '-' : humanSize($file['size'])) . '</td>' . "\n";
         $html .= ' <td data-value="' . $file['size'] . '" class="size" title="' . $file['size'] . ' bytes">' . humanSize($file['size']) . '</td>' . "\n";
@@ -634,7 +634,7 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
 
         <h1><?php echo getBreadcrumbsHtml($breadcrumbs); ?></h1>
 
-        <form method="post">
+        <form method="post" id="fileform">
             <p>
                 <button type="submit" name="zip_all">📦 Download all</button>
                 <button type="submit" name="zip_selected">📁 Download selected</button>
@@ -720,7 +720,7 @@ function renderOneTH($id, $longName, $sort, $order) {
         $html .= ' ' . $order;
     }
     $html .= '" data-sort="' . $id . '" data-order="asc" onclick="sortTable(\'' . $id . '\')"';
-    $html .= '>' . $longName . '</th>';
+    $html .= '>' . $longName . '</th>'."\n";
     return $html;
 }
 
@@ -733,4 +733,46 @@ function debug($var) {
     //var_dump($var);
     print_r($var);
     echo '</pre></hr>';
+}
+
+/**
+ * Calculates total weight and counts for a provided list of file names.
+ * * @param array $fileNames List of names from the POST/GET request.
+ * @param string $currentDir The directory context.
+ * @return array Stats including total size, file count, and folder count.
+ */
+function calculateProcessingStats(array $fileNames, string $currentDir): array {
+    $stats = ['size' => 0, 'files' => 0, 'dirs' => 0, 'validPaths' => []];
+
+    foreach ($fileNames as $name) {
+        $fullPath = $currentDir . DIRECTORY_SEPARATOR . $name;
+
+        // Security check: ensure path is within allowed bounds (your existing logic)
+        if (!isPathAllowed($fullPath)) continue;
+
+        if (is_dir($fullPath)) {
+            $stats['dirs']++;
+            $stats['size'] += getDirectorySize($fullPath);
+        } else if (file_exists($fullPath)) {
+            $stats['files']++;
+            $stats['size'] += filesize($fullPath);
+        }
+        $stats['validPaths'][] = $fullPath;
+    }
+
+    return $stats;
+}
+
+/**
+ * Checks if a given path is allowed based on security constraints.
+ * @param string $path The full path to check.
+ * @return bool True if the path is allowed, false otherwise.
+ */
+function isPathAllowed(string $path): bool {
+    // Implement your security checks here
+    // For example, ensure the path is within a specific base directory
+    $baseDir = realpath(__DIR__); // Adjust as needed
+    $realPath = realpath($path);
+
+    return $realPath !== false && str_starts_with($realPath, $baseDir);
 }

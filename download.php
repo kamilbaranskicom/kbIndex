@@ -95,11 +95,17 @@ function streamZip(array $files, string $baseName, string $currentPath, bool $pr
 
     exec($cmd, $output, $returnCode);
 
+    // Calculate stats for the user feedback
+    $stats = array_reduce($files, function ($carry, $item) {
+        !empty($item['is_dir']) ? $carry['dirs']++ : $carry['files']++;
+        return $carry;
+    }, ['dirs' => 0, 'files' => 0]);
+    $stats['totalWeight'] = $totalWeight;
 
     // Now, instead of exit, we enter the SSE loop (if requested via AJAX)
-    if ($isAsyncRequest) {
-        sendProgressStream($finalFileName, $totalWeight, $doneMarker);
-    }
+    // if ($isAsyncRequest) {
+        sendProgressStream($tmpZip, $finalFileName, $doneMarker, $stats);
+    // }
 
     chdir($oldDir);
 
@@ -143,47 +149,48 @@ function cleanOldTempFiles(int $seconds = 86400): void {
 
 /**
  * Streams progress updates to the client using SSE.
- * * @param string $filePath Path to the zip file being created.
+ * * @param string $tmpZip Path to the zip file being created.
  * @param int $totalWeight Sum of sizes of files to be packed.
  * @param string $marker Path to the file created when zip finishes.
+ * @return void
  */
-function sendProgressStream($filePath, $totalWeight, $marker) {
+function sendProgressStream(string $tmpZip, string $finalFileName, string $marker, array $stats) {
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
+
+
+    // Kill session locking to allow parallel requests (very important!)
+    if (session_status() == PHP_SESSION_ACTIVE) session_write_close();
 
     while (ob_get_level()) ob_end_clean();
 
     $startTime = time();
     $timeout = 300; // 5 minutes safety net
 
-    // Calculate stats for the user feedback
-    $stats = array_reduce($selectedFiles, function ($carry, $item) {
-        !empty($item['is_dir']) ? $carry['dirs']++ : $carry['files']++;
-        return $carry;
-    }, ['dirs' => 0, 'files' => 0]);
 
 
     while (true) {
         if (time() - $startTime > $timeout) break;
 
         $isDone = file_exists($marker);
-        $currentSize = file_exists($filePath) ? filesize($filePath) : 0;
+        $currentSize = file_exists($tmpZip) ? filesize($tmpZip) : 0;
 
         // Estimate progress based on file size.
         // We cap it at 99% until the marker file actually exists.
-        $progress = ($totalWeight > 0) ? ($currentSize / $totalWeight) * 100 : 0;
+        $progress = ($stats['totalWeight'] > 0) ? ($currentSize / $stats['totalWeight']) * 100 : 0;
         $progress = min($isDone ? 100 : 99, round($progress));
 
         // Inside your SSE loop (send this once at the start or with every update)
         echo "data: " . json_encode([
             'percent' => $progress,
-            'status' => $isDone ? 'completed' : 'compressing',
-            'fileName' => basename($filePath),
+            'status' => $isDone ? 'done' : 'processing',
+            'fileName' => basename($tmpZip),
             'stats' => [
                 'totalFolders' => $stats['dirs'],
                 'totalFiles' => $stats['files']
-            ]
+            ],
+            'downloadUrl' => $isDone ? "?action=download&file=" . basename($finalFileName) : null
         ]) . "\n\n";
 
         flush();

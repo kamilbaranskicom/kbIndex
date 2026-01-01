@@ -121,17 +121,27 @@ selectAllCheckbox.addEventListener("change", function () {
   });
 });
 
+document.querySelector('FORM').addEventListener("submit"), function(e) {
+  e.preventDefault();
+  initiateZipDownload();
+}
 
 /**
  * Initiates the download with a progress overlay.
  */
-function initiateZipDownload(files) {
+function initiateZipDownload() {
   const statusBox = document.getElementById("status-box");
   statusBox.classList.remove("hidden");
 
-  // We use EventSource to listen to the backend
+  // In kbIndex.js, when the download button is clicked:
+  const files = getSelectedFiles(); // your logic to get file list
+  const totalWeight = calculateTotalWeight(); // your logic with directory sizes
+
+  // We add &stream=1 to activate the SSE mode in PHP
   const eventSource = new EventSource(
-    `download.php?action=zip&files=${JSON.stringify(files)}`
+    `download.php?action=zip&stream=1&files=${JSON.stringify(
+      files
+    )}&weight=${totalWeight}`
   );
 
   eventSource.onmessage = (event) => {
@@ -142,10 +152,10 @@ function initiateZipDownload(files) {
       "status-text"
     ).innerText = `Preparing archive: ${data.percent}%`;
 
-    if (data.status === "completed") {
+    if (data.status === "done") {
       eventSource.close();
       // Trigger the actual file download now that it's ready
-      window.location.href = `download.php?get=${data.fileName}`;
+      window.location.href = `${data.downloadUrl}`;
       setTimeout(() => statusBox.classList.add("hidden"), 3000);
     }
   };
@@ -154,4 +164,8 @@ function initiateZipDownload(files) {
     eventSource.close();
     console.error("Compression stream failed.");
   };
+}
+
+function getSelectedFiles() {
+  console.log('getSelectedFiles() ! :>');
 }
