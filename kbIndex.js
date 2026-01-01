@@ -121,6 +121,37 @@ selectAllCheckbox.addEventListener("change", function () {
   });
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("kbIndexForm");
+  if (!form) return;
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault(); // Zatrzymujemy standardowy POST
+
+    const submitter = e.submitter; // Przycisk, który wywołał submit
+    let files = [];
+
+    if (submitter.name === "zip_all") {
+      // Pobierz wszystkie pliki z tabeli
+      files = Array.from(form.querySelectorAll('input[name="selected[]"]')).map(
+        (cb) => cb.value
+      );
+    } else if (submitter.name === "zip_selected") {
+      // Pobierz tylko zaznaczone
+      files = Array.from(
+        form.querySelectorAll('input[name="selected[]"]:checked')
+      ).map((cb) => cb.value);
+    }
+
+    if (files.length === 0) {
+      alert("Proszę zaznaczyć przynajmniej jeden plik.");
+      return;
+    }
+
+    startZipProgress(files);
+  });
+});
+
 /**
  * Initiates the download with a progress overlay.
  */
@@ -160,34 +191,3 @@ function startZipProgress(files) {
     console.error("Compression stream failed.");
   };
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("kbIndexForm");
-  if (!form) return;
-
-  form.addEventListener("submit", function (e) {
-    e.preventDefault(); // Zatrzymujemy standardowy POST
-
-    const submitter = e.submitter; // Przycisk, który wywołał submit
-    let files = [];
-
-    if (submitter.name === "zip_all") {
-      // Pobierz wszystkie pliki z tabeli
-      files = Array.from(form.querySelectorAll('input[name="selected[]"]')).map(
-        (cb) => cb.value
-      );
-    } else if (submitter.name === "zip_selected") {
-      // Pobierz tylko zaznaczone
-      files = Array.from(
-        form.querySelectorAll('input[name="selected[]"]:checked')
-      ).map((cb) => cb.value);
-    }
-
-    if (files.length === 0) {
-      alert("Proszę zaznaczyć przynajmniej jeden plik.");
-      return;
-    }
-
-    startZipProgress(files);
-  });
-});

@@ -43,7 +43,7 @@ $action = $_GET['action'] ?? 'list';
 switch ($action) {
     case 'zip':
         // PHASE 1: Calculate weight and start SSE stream
-        handleZipRequest($physicalPath, $_GET['files'], $config);
+        handleZipRequest($physicalPath, json_decode($_GET['files'], true), $config);
         // (TODO: we shall check if the client sent POST for clients without JS)
         // // Handle download requests before any HTML is sent
         // if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -54,7 +54,7 @@ switch ($action) {
 
     case 'download':
         // PHASE 2: Serve the actual binary file
-        // handleDownloadAction();
+        handleDownloadAction();
         break;
 
     case 'list':
@@ -67,7 +67,7 @@ switch ($action) {
 function handleDownloadAction() {
     $tmpZip = $_GET('fileName') || die("No fileName given.");
     $finalFileName = $_GET['finalFileName'] || 'download.zip';
-    //if ($returnCode === 0 && file_exists($tmpZip)) {
+    // if ($returnCode === 0 && file_exists($tmpZip)) {
     if (file_exists($tmpZip)) {
         if (ob_get_level()) ob_end_clean();
 

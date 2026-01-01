@@ -776,3 +776,11 @@ function isPathAllowed(string $path): bool {
 
     return $realPath !== false && str_starts_with($realPath, $baseDir);
 }
+
+function debug2mime($mime = 'cokolwiek/cokolwiek') {
+    header('Content-Type: ' . $mime);
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    readfile('kbIndex.js');
+    die();
+}

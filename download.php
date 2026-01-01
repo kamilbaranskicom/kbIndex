@@ -7,52 +7,74 @@
  * @param array $config Configuration array including ignore patterns.
  * @return void
  */
-function handleZipRequest(string $physicalPath, array $config): void {
+function handleZipRequest(string $physicalPath, $files, array $config): void {
+    // debug($physicalPath);
+
     // Maintenance: Remove temporary archives older than 24 hours
     cleanOldTempFiles(86400);
 
-    $filesToZip = [];
-    $totalWeight = 0;
-
-    // Determine the requested action
-    $action = isset($_POST['zip_all']) ? 'all' : (isset($_POST['zip_selected']) ? 'selected' : null);
-    if (!$action) return;
-
-    // Get legitimate files from the current directory to prevent unauthorized access
-    $allowedFiles = getFileList($physicalPath, $config);
-    $allowedMap = [];
-    foreach ($allowedFiles as $f) {
-        $allowedMap[$f['name']] = $f['size_raw'] ?? 0;
+    if (!$files) {
+        echo "data: " . json_encode(['type' => 'error', 'message' => 'Błędna lista plików']) . "\n\n";
+        exit;
     }
 
-    if ($action === 'all') {
-        // When zipping everything, we just pass the path and set preserveRoot to true
-        $folderName = basename($physicalPath) ?: 'home';
+    $name = basename($physicalPath) ?: 'archive';
 
-        streamZip([], $folderName, $physicalPath, $totalWeight, true);      // TODO: total weight is 0 since we don't precompute it here!
-    } else {
-        // Selecting specific files
-        foreach ($_POST['selected'] as $name) {
-            $name = basename($name); // Sanitize to prevent path traversal
-            if (isset($allowedMap[$name])) {
-                $filesToZip[] = $physicalPath . DIRECTORY_SEPARATOR . $name;
-                $totalWeight += $allowedMap[$name];
-            }
-        }
+    // Prevent unauthorized access:
+    // - get legitimate files from the current directory to prevent unauthorized access
+    $allowedFiles = getFileList($physicalPath, $config);
 
-        // Validate total archive size before processing
-        if ($totalWeight > $config['maxSizeLimit']) {
-            die("Error: Selected payload (" . humanSize($totalWeight) . ") exceeds the " . humanSize($config['maxSizeLimit']) . " limit.");
-        }
-        // Validate that we have enough space to create the archive
-        if ($totalWeight > disk_free_space(sys_get_temp_dir())) {
-            die("Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . ".");
-        }
+    // (if user needs all the files, this is the same list as $allowedFiles.)
+    if (isset($_GET['all'])) {
+        $files = $allowedFiles;
+    }
 
-        if (!empty($filesToZip)) {
-            $folderName = basename($physicalPath) ?: 'home';
-            streamZip($filesToZip, $folderName, $physicalPath, $totalWeight, false);
-        }
+    // - sanitize to prevent path traversal
+    $files = array_map('basename', $files);
+
+    // convert $allowedFiles to $map helper array:
+    //      $map['file.txt'] = 40 (bytes),
+    //      $map['file.mp3'] = 6 543 210 (bytes),
+    //      $map['not-allowed-file.git'] = -1 (status: not allowed)
+    //      etc.
+    $map = [];
+    foreach ($allowedFiles as $allowedFile) {
+        $map[$allowedFile['name']] = $allowedFile['size'] ?? -1;
+    }
+
+    // - remove unAllowed files (not existing in getFileList())
+    $files = array_filter($files, function ($filename) use ($map) {
+        return isset($map[$filename]) && ($map[$filename] >= 0);
+    });
+
+    // - check if every file exists
+    $files = array_filter($files, function ($filename) use ($physicalPath) {
+        return file_exists($physicalPath . DIRECTORY_SEPARATOR . $filename);
+    });
+    // THE $FILES LIST IS LEGIT. ALL THE FILES ARE ALLOWED TO ARCHIVE/DOWNLOAD.
+
+    // get the sum of file sizes.
+    $totalWeight = 0;
+    foreach ($files as $filename) {
+        $totalWeight += $map[$filename];
+    };
+
+    // add $physicalPath to all the files
+    $filesToZip = array_map(function ($filename) use ($physicalPath) {
+        return $physicalPath . DIRECTORY_SEPARATOR . $filename;
+    }, $files);
+
+
+    // Validate total archive size before processing
+    if ($totalWeight > $config['maxSizeLimit']) {
+        die("Error: Selected payload (" . humanSize($totalWeight) . ") exceeds the " . humanSize($config['maxSizeLimit']) . " limit.");
+    }
+    // Validate that we have enough space to create the archive
+    if ($totalWeight > disk_free_space(sys_get_temp_dir())) {
+        die("Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . ".");
+    }
+    if (!empty($filesToZip)) {
+        streamZip($filesToZip, $name, $physicalPath, $totalWeight, isset($_GET['all']));
     }
 }
 
@@ -166,7 +188,6 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
 
     $startTime = time();
     $timeout = 300; // 5 minutes safety net
-
 
 
     while (true) {
