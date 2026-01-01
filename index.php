@@ -2,11 +2,14 @@
 
 define('KB_INDEX_URI', '/kbIndex/'); // URL path to the tool folder
 
-
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/config_defaults.php';
+if (file_exists(__DIR__ . '/config_site.php')) {
+    require_once __DIR__ . '/config_site.php';
+}
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/download.php';
 
+$config = mergeConfigs($configDefaults, $configSite ?? []);
 
 // 1. Get the logical URI path (e.g., /files/a/)
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);

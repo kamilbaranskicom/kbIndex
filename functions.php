@@ -610,11 +610,11 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
                         <th class="checkbox"><label><input type="checkbox" id="selectAll"></label></th>
                         <th></th>
                         <?php
-                        renderOneTH('name', 'Name', $sort, $order);
-                        renderOneTH('ext', '.ext', $sort, $order);
-                        renderOneTH('size', 'Size', $sort, $order);
-                        renderOneTH('mtime', 'Last modified', $sort, $order);
-                        renderOneTH('description', 'Description', $sort, $order);
+                        echo renderOneTH('name', 'Name', $sort, $order);
+                        echo renderOneTH('ext', '.ext', $sort, $order);
+                        echo renderOneTH('size', 'Size', $sort, $order);
+                        echo renderOneTH('mtime', 'Last modified', $sort, $order);
+                        echo renderOneTH('description', 'Description', $sort, $order);
                         ?>
                     </tr>
                 </thead>
@@ -626,7 +626,7 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
             </table>
         </form>
 
-        <footer><small>&copy; <?= date('Y') . ' ' . $config['footerUser']; ?> &amp; <a href="https://kamilbaranski.com/">kamilbaranski.com</a></small></footer>
+        <footer><small>&copy; <?= date('Y') . ' ' . $config['footerUser']; ?></small></footer>
 
     </body>
 
@@ -634,15 +634,28 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
 <?php
 }
 
+/**
+ * Renders a sortable table header cell.
+ * @param string $id Column identifier
+ * @param string $longName Display name
+ * @param string $sort Current sort column
+ * @param string $order Current sort order
+ * @return string HTML for the table header cell
+ */
 function renderOneTH($id, $longName, $sort, $order) {
-    echo '<th class="sortable';
+    $html = '<th class="sortable';
     if ($sort == $id) {
-        echo ' ' . $order;
+        $html .= ' ' . $order;
     }
-    echo '" data-sort="' . $id . '" data-order="asc" onclick="sortTable(\'' . $id . '\')"';
-    echo '>' . $longName . '</th>';
+    $html .= '" data-sort="' . $id . '" data-order="asc" onclick="sortTable(\'' . $id . '\')"';
+    $html .= '>' . $longName . '</th>';
+    return $html;
 }
 
+/**
+ * Debugging helper to print variable contents.
+ * @param mixed $var Variable to debug
+ */
 function debug($var) {
     echo '<hr><pre>';
     //var_dump($var);

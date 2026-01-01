@@ -41,9 +41,12 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
         }
 
         // Validate total archive size before processing
-        if ($totalWeight > $maxSizeLimit) {
-            $weightInGb = round($totalWeight / 1024 / 1024 / 1024, 2);
-            die("Error: Selected payload ($weightInGb GB) exceeds the 20 GB limit.");
+        if ($totalWeight > $config['maxSizeLimit']) {
+            die("Error: Selected payload (" . humanSize($totalWeight) . ") exceeds the " . humanSize($config['maxSizeLimit']) . " limit.");
+        }
+        // Validate that we have enough space to create the archive
+        if ($totalWeight > disk_free_space(sys_get_temp_dir())) {
+            die("Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . ".");
         }
 
         if (!empty($toZip)) {
