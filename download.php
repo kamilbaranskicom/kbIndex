@@ -108,14 +108,13 @@ function streamZip(array $files, string $baseName, string $currentPath, bool $pr
         if (file_exists($tmpZip)) unlink($tmpZip);
         exit;
     }
-
     if (file_exists($tmpZip)) unlink($tmpZip);
     throw new Exception("ZIP Error: " . implode("\n", $output));
 }
 
 /**
  * Removes temporary ZIP files older than the specified threshold.
- * * @param int $seconds Minimum age of files to be removed in seconds.
+ * * @param int $seconds Minimum age of files to be removed in seconds. (86400 = 24 hours.)
  * @return void
  */
 function cleanOldTempFiles(int $seconds = 86400): void {
