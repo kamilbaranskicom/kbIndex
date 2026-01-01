@@ -99,18 +99,18 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
 
     $oldDir = getcwd();
 
-    if ($preserveRoot) {
-        // Go one level up to include the current folder name in the ZIP
-        $parentPath = dirname($currentPath);
-        $targetFolderName = basename($currentPath);
-        chdir($parentPath);
-        $zipTarget = escapeshellarg($targetFolderName);
-    } else {
+    // if ($preserveRoot) {
+    //     // Go one level up to include the current folder name in the ZIP
+    //     $parentPath = dirname($currentPath);
+    //     $targetFolderName = basename($currentPath);
+    //     chdir($parentPath);
+    //     $zipTarget = escapeshellarg($targetFolderName);
+    // } else {
         // Standard behavior: zip only contents
         chdir($currentPath);
         $relativeFiles = array_map('escapeshellarg', array_map('basename', $files));
         $zipTarget = implode(' ', $relativeFiles);
-    }
+    // }
 
     // -1: Fast, -r: Recursive
     $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") > /dev/null 2>&1 &";
