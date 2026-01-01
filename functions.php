@@ -556,7 +556,7 @@ function renderTableRows($fileList): string {
     $html = '';
     foreach ($fileList as $file) {
         $html .= '<tr data-isdir="' . ($file['is_dir'] ? 1 : 0) . '">' . "\n";
-        $html .= ' <td class="checkbox"><input type="checkbox" name="selected[]" value="' . htmlspecialchars($file['name']) . '"></td>' . "\n";
+        $html .= ' <td class="checkbox"><label><input type="checkbox" name="selected[]" value="' . htmlspecialchars($file['name']) . '"></label></td>' . "\n";
         $html .= ' <td class="icon"><img src="' . $file['icon'] . '" alt=""></td>' . "\n";
         $html .= ' <td><a href="' . rawurlencode($file['name']) . ($file['is_dir'] ? '/' : '') . '">' . htmlspecialchars($file['name']) . '</a></td>' . "\n";
         $html .= ' <td data-value="' . pathinfo($file['name'])['extension'] . '"></td>' . "\n";
@@ -607,7 +607,7 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
             <table class="file-table">
                 <thead>
                     <tr>
-                        <th></th>
+                        <th class="checkbox"><label><input type="checkbox" id="selectAll"></label></th>
                         <th></th>
                         <?php
                         renderOneTH('name', 'Name', $sort, $order);

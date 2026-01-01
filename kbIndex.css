@@ -1,83 +1,108 @@
 BODY {
-    margin:20px;
+  margin: 20px;
   font-family: monospace, "Roboto", sans-serif;
   font-optical-sizing: auto;
-  font-weight: <weight>;
+  font-weight: 400;
   font-style: normal;
-  font-variation-settings:
-    "wdth" 100;
+  font-variation-settings: "wdth" 100;
 }
 body::before {
-    transform: rotate(-20deg);
-    background-image: url(/img/lukowastudio-logo.svg);
-    background-size: 130px;
-    width: 300%;
-    height: 300%;
-    position: fixed;
-    top: -50%;
-    left: -50%;
-    opacity: 10%;
-    content: "";
-    z-index: -1;
-    background-repeat: repeat;
+  transform: rotate(-20deg);
+  background-image: url(/img/lukowastudio-logo.svg);
+  background-size: 130px;
+  width: 300%;
+  height: 300%;
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  opacity: 10%;
+  content: "";
+  z-index: -1;
+  background-repeat: repeat;
 }
 
 .file-table {
-    min-width: 50%;
-    border-collapse: collapse;
-    /* font-family: Arial, sans-serif; */
+  min-width: 50%;
+  border-collapse: collapse;
+  /* font-family: Arial, sans-serif; */
 }
-.file-table th, .file-table td {
-    border-bottom: 1px solid #ddd;
-    padding: 6px 10px;
-    text-align: left;
+.file-table th,
+.file-table td {
+  border-bottom: 1px solid #ddd;
+  padding: 6px 10px;
+  text-align: left;
 }
 .file-table th {
-    background-color: #f2f2f2;
+  background-color: #f2f2f2;
 }
 .file-table tr:nth-child(even) {
-    background-color: #eaeaea4a;
+  background-color: #eaeaea4a;
 }
 .file-table tr:nth-child(odd) {
-    background-color: #ffffff4a;
+  background-color: #ffffff4a;
 }
 
-.file-table .checkbox, .file-table .icon {
-    width:1em;
-    padding: 6px 5px;
+.file-table .checkbox,
+.file-table .icon {
+  width: 1em;
+  padding: 6px 5px;
 }
+.file-table td.checkbox {
+  padding: 0; /* Usuwamy padding z komórki, aby label dolegał do brzegów */
+}
+.file-table th.checkbox {
+  padding: 0px 5px 0px 0px;
+}
+.file-table .checkbox label {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  padding: 9px 0px 9px 7px;
+}
+.file-table.checkbox label:hover {
+  background-color: #d0d0d0;
+}
+
 .file-table .size {
-    text-align: right;
+  text-align: right;
 }
 .breadcrumbs {
-    margin-bottom: 10px;
-    font-family: Arial, sans-serif;
+  margin-bottom: 10px;
+  font-family: Arial, sans-serif;
 }
 .breadcrumbs a {
-    text-decoration: none;
-    color: #0073aa;
+  text-decoration: none;
+  color: #0073aa;
 }
-.breadcrumbs a:HOVER {
-    text-decoration:underline;
+.breadcrumbs a:hover {
+  text-decoration: underline;
 }
 .download-buttons {
-    margin-top: 10px;
+  margin-top: 10px;
 }
 .download-buttons button {
-    margin-right: 5px;
-    padding: 5px 10px;
-    font-size: 14px;
+  margin-right: 5px;
+  padding: 5px 10px;
+  font-size: 14px;
 }
 footer {
-    border-top: 1px solid #ddd;
-    margin-top:20px;
+  border-top: 1px solid #ddd;
+  margin-top: 20px;
 }
-th.asc::before { content: "↑ "; opacity: 0.8; }
-th.desc::before { content: "↓ "; opacity: 0.8; }
+th.asc::before {
+  content: "↑ ";
+  opacity: 0.8;
+}
+th.desc::before {
+  content: "↓ ";
+  opacity: 0.8;
+}
 TH[onclick] {
-    color: navy;
-    cursor: pointer;
+  color: navy;
+  cursor: pointer;
 }
-th.desc, th.asc {
-    background-color: #d0d0d0;
+th.desc,
+th.asc {
+  background-color: #d0d0d0;
 }

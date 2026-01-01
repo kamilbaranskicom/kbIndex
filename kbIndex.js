@@ -110,3 +110,13 @@ function updateURLParameters(newParams) {
 
   return url.toString();
 }
+
+const selectAllCheckbox = document.getElementById('selectAll');
+  // Pobieramy wszystkie checkboxy, które mają nazwę "selected[]"
+  const checkboxes = document.querySelectorAll('input[name="selected[]"]');
+
+  selectAllCheckbox.addEventListener('change', function() {
+    checkboxes.forEach(cb => {
+      cb.checked = this.checked;
+    });
+  });
