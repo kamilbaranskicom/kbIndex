@@ -159,9 +159,8 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
 
-
-    // Kill session locking to allow parallel requests (very important!)
-    if (session_status() == PHP_SESSION_ACTIVE) session_write_close();
+    ini_set('output_buffering', 'off');
+    ini_set('zlib.output_compression', false);
 
     while (ob_get_level()) ob_end_clean();
 
