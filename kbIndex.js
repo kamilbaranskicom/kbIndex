@@ -69,7 +69,7 @@ function sortTable(columnName) {
       });
       // APPLY DIRECTION
       if (direction === "desc") comparison2 *= -1;
-      
+
       return comparison2;
     }
 
@@ -111,12 +111,47 @@ function updateURLParameters(newParams) {
   return url.toString();
 }
 
-const selectAllCheckbox = document.getElementById('selectAll');
-  // Pobieramy wszystkie checkboxy, które mają nazwę "selected[]"
-  const checkboxes = document.querySelectorAll('input[name="selected[]"]');
+const selectAllCheckbox = document.getElementById("selectAll");
+// Pobieramy wszystkie checkboxy, które mają nazwę "selected[]"
+const checkboxes = document.querySelectorAll('input[name="selected[]"]');
 
-  selectAllCheckbox.addEventListener('change', function() {
-    checkboxes.forEach(cb => {
-      cb.checked = this.checked;
-    });
+selectAllCheckbox.addEventListener("change", function () {
+  checkboxes.forEach((cb) => {
+    cb.checked = this.checked;
   });
+});
+
+
+/**
+ * Initiates the download with a progress overlay.
+ */
+function initiateZipDownload(files) {
+  const statusBox = document.getElementById("status-box");
+  statusBox.classList.remove("hidden");
+
+  // We use EventSource to listen to the backend
+  const eventSource = new EventSource(
+    `download.php?action=zip&files=${JSON.stringify(files)}`
+  );
+
+  eventSource.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    // Update your UI element
+    document.getElementById(
+      "status-text"
+    ).innerText = `Preparing archive: ${data.percent}%`;
+
+    if (data.status === "completed") {
+      eventSource.close();
+      // Trigger the actual file download now that it's ready
+      window.location.href = `download.php?get=${data.fileName}`;
+      setTimeout(() => statusBox.classList.add("hidden"), 3000);
+    }
+  };
+
+  eventSource.onerror = () => {
+    eventSource.close();
+    console.error("Compression stream failed.");
+  };
+}

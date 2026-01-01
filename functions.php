@@ -392,7 +392,7 @@ function getFileList(string $physicalPath, array $config): array {
                 'is_dir'    => $fileInfo->isDir(),
                 'is_link'   => $isLink,
                 'is_broken' => $isLink && !$exists,
-                'size'      => ($fileInfo->isDir() || ($isLink && !$exists)) ? 0 : $fileInfo->getSize(),
+                'size'      => ($fileInfo->isDir() || ($isLink && !$exists)) ? getDirectorySize($fileInfo->getRealPath()) : $fileInfo->getSize(),
                 'mtime'     => ($isLink && !$exists) ? time() : $fileInfo->getMTime(),
                 'extension' => strtolower($fileInfo->getExtension()),
                 'description' => resolveDescription($fileInfo, $config['descriptions']),
@@ -416,6 +416,40 @@ function getFileList(string $physicalPath, array $config): array {
 
     $fileList = resolveIcons($fileList, $config);
     return $fileList;
+}
+
+/**
+ * Calculates the total size of a directory including all subdirectories and files.
+ * Uses RecursiveIterator for maximum performance and memory efficiency.
+ * 
+ * TODO: Now it doesn't check if files are allowed or ignored; just raw size.
+ * 
+ * @param string $path Path to the directory.
+ * @return int Total size in bytes.
+ */
+function getDirectorySize(string $path): int {
+    $totalSize = 0;
+
+    // Check if path is valid and readable
+    if (!is_dir($path) || !is_readable($path)) {
+        return 0;
+    }
+
+    try {
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($files as $file) {
+            $totalSize += $file->getSize();
+        }
+    } catch (Exception $e) {
+        // Fallback to 0 if something goes wrong with permissions
+        return 0;
+    }
+
+    return $totalSize;
 }
 
 /**
@@ -560,7 +594,9 @@ function renderTableRows($fileList): string {
         $html .= ' <td class="icon"><img src="' . $file['icon'] . '" alt=""></td>' . "\n";
         $html .= ' <td><a href="' . rawurlencode($file['name']) . ($file['is_dir'] ? '/' : '') . '">' . htmlspecialchars($file['name']) . '</a></td>' . "\n";
         $html .= ' <td data-value="' . pathinfo($file['name'])['extension'] . '"></td>' . "\n";
-        $html .= ' <td data-value="' . $file['size'] . '" class="size" title="' . $file['size'] . ' bytes">' . ($file['is_dir'] ? '-' : humanSize($file['size'])) . '</td>' . "\n";
+        // [old]
+        // $html .= ' <td data-value="' . $file['size'] . '" class="size" title="' . $file['size'] . ' bytes">' . ($file['is_dir'] ? '-' : humanSize($file['size'])) . '</td>' . "\n";
+        $html .= ' <td data-value="' . $file['size'] . '" class="size" title="' . $file['size'] . ' bytes">' . humanSize($file['size']) . '</td>' . "\n";
         $html .= ' <td data-value="' . $file['mtime'] . '">' . date("Y-m-d H:i", $file['mtime']) . '</td>' . "\n";
         $html .= ' <td>' . htmlspecialchars($file['description']) . '</td>' . "\n";
         $html .= '</tr>' . "\n\n";
@@ -627,6 +663,15 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
         </form>
 
         <footer><small>&copy; <?= date('Y') . ' ' . $config['footerUser']; ?></small></footer>
+
+        <div id="status-box" class="hidden">
+            <div id="status-content">
+                <h2>Preparing your download...</h2>
+                <div id="status-message">Initializing...</div>
+                <progress id="status-progress" value="0" max="100"></progress>
+                <div id="status-details"></div>
+            </div>
+        </div>
 
     </body>
 

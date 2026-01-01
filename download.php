@@ -13,7 +13,6 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
 
     $toZip = [];
     $totalWeight = 0;
-    $maxSizeLimit = 20 * 1024 * 1024 * 1024; // 20GB
 
     // Determine the requested action
     $action = isset($_POST['zip_all']) ? 'all' : (isset($_POST['zip_selected']) ? 'selected' : null);
@@ -29,7 +28,8 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
     if ($action === 'all') {
         // When zipping everything, we just pass the path and set preserveRoot to true
         $folderName = basename($physicalPath) ?: 'home';
-        streamZip([], $folderName, $physicalPath, true);
+
+        streamZip([], $folderName, $physicalPath, true, $totalWeight);      // TODO: total weight is 0 since we don't precompute it here!
     } else {
         // Selecting specific files
         foreach ($_POST['selected'] as $name) {
@@ -51,7 +51,7 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
 
         if (!empty($toZip)) {
             $folderName = basename($physicalPath) ?: 'home';
-            streamZip($toZip, $folderName, $physicalPath, false);
+            streamZip($toZip, $folderName, $physicalPath, false, $totalWeight);
         }
     }
 }
@@ -65,12 +65,13 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
  * @param bool $preserveRoot Whether to include the current directory name in the archive structure.
  * @return void
  */
-function streamZip(array $files, string $baseName, string $currentPath, bool $preserveRoot = false): void {
+function streamZip(array $files, string $baseName, string $currentPath, bool $preserveRoot = false, $totalWeight): void {
     set_time_limit(900);
 
     $timestamp = date('Ymd-His');
     $safeBaseName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $baseName);
     $finalFileName = "{$safeBaseName}_download_{$timestamp}.zip";
+    $doneMarker = $finalFileName . '.done';
 
     $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('kbindex_') . '.zip';
 
@@ -90,11 +91,20 @@ function streamZip(array $files, string $baseName, string $currentPath, bool $pr
     }
 
     // -1: Fast, -r: Recursive
-    $cmd = "zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " 2>&1";
+    $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") > /dev/null 2>&1 &";
 
     exec($cmd, $output, $returnCode);
+
+
+    // Now, instead of exit, we enter the SSE loop (if requested via AJAX)
+    if ($isAsyncRequest) {
+        sendProgressStream($finalFileName, $totalWeight, $doneMarker);
+    }
+
     chdir($oldDir);
 
+
+    /*
     if ($returnCode === 0 && file_exists($tmpZip)) {
         if (ob_get_level()) ob_end_clean();
 
@@ -110,7 +120,9 @@ function streamZip(array $files, string $baseName, string $currentPath, bool $pr
     }
     if (file_exists($tmpZip)) unlink($tmpZip);
     throw new Exception("ZIP Error: " . implode("\n", $output));
+    */
 }
+
 
 /**
  * Removes temporary ZIP files older than the specified threshold.
@@ -126,5 +138,49 @@ function cleanOldTempFiles(int $seconds = 86400): void {
         if (is_file($file) && ($now - filemtime($file) > $seconds)) {
             unlink($file);
         }
+    }
+}
+
+/**
+ * Streams progress updates to the client using SSE.
+ * * @param string $filePath Path to the zip file being created.
+ * @param int $totalWeight Sum of sizes of files to be packed.
+ * @param string $marker Path to the file created when zip finishes.
+ */
+function sendProgressStream($filePath, $totalWeight, $marker) {
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('Connection: keep-alive');
+
+    while (ob_get_level()) ob_end_clean();
+
+    $startTime = time();
+    $timeout = 300; // 5 minutes safety net
+
+    while (true) {
+        if (time() - $startTime > $timeout) break;
+
+        $isDone = file_exists($marker);
+        $currentSize = file_exists($filePath) ? filesize($filePath) : 0;
+
+        // Estimate progress based on file size.
+        // We cap it at 99% until the marker file actually exists.
+        $progress = ($totalWeight > 0) ? ($currentSize / $totalWeight) * 100 : 0;
+        $progress = min($isDone ? 100 : 99, round($progress));
+
+        echo "data: " . json_encode([
+            'percent' => $progress,
+            'status' => $isDone ? 'completed' : 'compressing',
+            'fileName' => basename($filePath)
+        ]) . "\n\n";
+
+        flush();
+
+        if ($isDone) {
+            unlink($marker); // Cleanup marker
+            break;
+        }
+
+        usleep(300000); // 300ms heartbeat
     }
 }
