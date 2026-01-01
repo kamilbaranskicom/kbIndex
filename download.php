@@ -7,11 +7,11 @@
  * @param array $config Configuration array including ignore patterns.
  * @return void
  */
-function handleDownloadRequest(string $physicalPath, array $config): void {
+function handleZipRequest(string $physicalPath, array $config): void {
     // Maintenance: Remove temporary archives older than 24 hours
     cleanOldTempFiles(86400);
 
-    $toZip = [];
+    $filesToZip = [];
     $totalWeight = 0;
 
     // Determine the requested action
@@ -29,13 +29,13 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
         // When zipping everything, we just pass the path and set preserveRoot to true
         $folderName = basename($physicalPath) ?: 'home';
 
-        streamZip([], $folderName, $physicalPath, true, $totalWeight);      // TODO: total weight is 0 since we don't precompute it here!
+        streamZip([], $folderName, $physicalPath, $totalWeight, true);      // TODO: total weight is 0 since we don't precompute it here!
     } else {
         // Selecting specific files
         foreach ($_POST['selected'] as $name) {
             $name = basename($name); // Sanitize to prevent path traversal
             if (isset($allowedMap[$name])) {
-                $toZip[] = $physicalPath . DIRECTORY_SEPARATOR . $name;
+                $filesToZip[] = $physicalPath . DIRECTORY_SEPARATOR . $name;
                 $totalWeight += $allowedMap[$name];
             }
         }
@@ -49,9 +49,9 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
             die("Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . ".");
         }
 
-        if (!empty($toZip)) {
+        if (!empty($filesToZip)) {
             $folderName = basename($physicalPath) ?: 'home';
-            streamZip($toZip, $folderName, $physicalPath, false, $totalWeight);
+            streamZip($filesToZip, $folderName, $physicalPath, $totalWeight, false);
         }
     }
 }
@@ -65,7 +65,7 @@ function handleDownloadRequest(string $physicalPath, array $config): void {
  * @param bool $preserveRoot Whether to include the current directory name in the archive structure.
  * @return void
  */
-function streamZip(array $files, string $baseName, string $currentPath, bool $preserveRoot = false, $totalWeight): void {
+function streamZip(array $files, string $baseName, string $currentPath, $totalWeight, bool $preserveRoot = false): void {
     set_time_limit(900);
 
     $timestamp = date('Ymd-His');
@@ -104,7 +104,7 @@ function streamZip(array $files, string $baseName, string $currentPath, bool $pr
 
     // Now, instead of exit, we enter the SSE loop (if requested via AJAX)
     // if ($isAsyncRequest) {
-        sendProgressStream($tmpZip, $finalFileName, $doneMarker, $stats);
+    sendProgressStream($tmpZip, $finalFileName, $doneMarker, $stats);
     // }
 
     chdir($oldDir);
@@ -184,7 +184,7 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
         // Inside your SSE loop (send this once at the start or with every update)
         echo "data: " . json_encode([
             'percent' => $progress,
-            'status' => $isDone ? 'done' : 'processing',
+            'status' => $isDone ? 'done' : 'progress',
             'fileName' => basename($tmpZip),
             'stats' => [
                 'totalFolders' => $stats['dirs'],

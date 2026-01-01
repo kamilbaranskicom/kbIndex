@@ -121,36 +121,31 @@ selectAllCheckbox.addEventListener("change", function () {
   });
 });
 
-document.querySelector('FORM').addEventListener("submit"), function(e) {
-  e.preventDefault();
-  initiateZipDownload();
-}
-
 /**
  * Initiates the download with a progress overlay.
  */
-function initiateZipDownload() {
+function startZipProgress(files) {
   const statusBox = document.getElementById("status-box");
   statusBox.classList.remove("hidden");
+  const progressBar = document.querySelector("#status-progress");
+  const statusMessage = document.querySelector("#status-message");
 
-  // In kbIndex.js, when the download button is clicked:
-  const files = getSelectedFiles(); // your logic to get file list
-  const totalWeight = calculateTotalWeight(); // your logic with directory sizes
+  const filesJson = JSON.stringify(files);
+  const url = `?action=zip&files=${encodeURIComponent(filesJson)}`;
 
-  // We add &stream=1 to activate the SSE mode in PHP
-  const eventSource = new EventSource(
-    `download.php?action=zip&stream=1&files=${JSON.stringify(
-      files
-    )}&weight=${totalWeight}`
-  );
+  console.log(filesJson);
+  console.log(url);
+
+  const eventSource = new EventSource(url);
 
   eventSource.onmessage = (event) => {
     const data = JSON.parse(event.data);
 
     // Update your UI element
-    document.getElementById(
-      "status-text"
-    ).innerText = `Preparing archive: ${data.percent}%`;
+    if (data.type === "progress") {
+      progressBar.value = data.progress;
+      statusMessage.innerText = `Preparing archive: ${data.file} (${data.percent}%)`;
+    }
 
     if (data.status === "done") {
       eventSource.close();
@@ -166,6 +161,33 @@ function initiateZipDownload() {
   };
 }
 
-function getSelectedFiles() {
-  console.log('getSelectedFiles() ! :>');
-}
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("kbIndexForm");
+  if (!form) return;
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault(); // Zatrzymujemy standardowy POST
+
+    const submitter = e.submitter; // Przycisk, który wywołał submit
+    let files = [];
+
+    if (submitter.name === "zip_all") {
+      // Pobierz wszystkie pliki z tabeli
+      files = Array.from(form.querySelectorAll('input[name="selected[]"]')).map(
+        (cb) => cb.value
+      );
+    } else if (submitter.name === "zip_selected") {
+      // Pobierz tylko zaznaczone
+      files = Array.from(
+        form.querySelectorAll('input[name="selected[]"]:checked')
+      ).map((cb) => cb.value);
+    }
+
+    if (files.length === 0) {
+      alert("Proszę zaznaczyć przynajmniej jeden plik.");
+      return;
+    }
+
+    startZipProgress(files);
+  });
+});

@@ -634,7 +634,7 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
 
         <h1><?php echo getBreadcrumbsHtml($breadcrumbs); ?></h1>
 
-        <form method="post" id="fileform">
+        <form id="kbIndexForm" action="?" method="post">
             <p>
                 <button type="submit" name="zip_all">📦 Download all</button>
                 <button type="submit" name="zip_selected">📁 Download selected</button>
@@ -720,7 +720,7 @@ function renderOneTH($id, $longName, $sort, $order) {
         $html .= ' ' . $order;
     }
     $html .= '" data-sort="' . $id . '" data-order="asc" onclick="sortTable(\'' . $id . '\')"';
-    $html .= '>' . $longName . '</th>'."\n";
+    $html .= '>' . $longName . '</th>' . "\n";
     return $html;
 }
 
