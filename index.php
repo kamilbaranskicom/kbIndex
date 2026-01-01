@@ -40,6 +40,7 @@ switch ($action) {
 
 function handleDownloadAction() {
     $tmpZip = $_GET('fileName') || die("No fileName given.");
+    $finalFileName = $_GET['finalFileName'] || 'download.zip';
     //if ($returnCode === 0 && file_exists($tmpZip)) {
     if (file_exists($tmpZip)) {
         if (ob_get_level()) ob_end_clean();
