@@ -712,10 +712,13 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
                 echo '(directories: ' . $dirCount . ', ';
                 echo 'files: ' . $fileCount . '), ';
                 echo 'size: ' . humanSize(array_sum(array_column($fileList, 'size'))) . '. ';
-                /* echo 'Newest file modification: ';
-                $newest = max(array_column($fileList, 'mtime'));
-                echo date("Y-m-d H:i", $newest) . '.';
-                */ 
+                if ($config['displayNewestItem']) {
+                    $newest = array_reduce($fileList, function ($carry, $item) {
+                        return ($carry === null || $item['mtime'] > $carry['mtime']) ? $item : $carry;
+                    });
+
+                    echo 'Newest item: ' . $newest['name'] . ' (' . date("Y-m-d H:i", $newest['mtime']) . ').';
+                }
                 ?>
             </small>
         </footer>

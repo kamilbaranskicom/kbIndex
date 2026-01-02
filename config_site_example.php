@@ -5,6 +5,7 @@ $config = array_merge($config, [
     //    'titleSuffix'     => ' [kbIndex @ '.$_SERVER['HTTP_HOST'].']',
     'maxSizeLimit'    => 4 * 1024 * 1024 * 1024, // 4 GB
     'maxDiskSpaceLimit' => 1 * 1024 * 1024 * 1024, // 1 GB
+    //    'displayNewestItem' => true,
     'footerUser'      => '<a href="https://yourcompany.net/">Your Company</a>',
     //    'descriptions'    => ['.broken' => 'Broken symbolic link'],
     //    'ignorePatterns'  => [    // Beware! The ignorePatterns doesn't work when downloading a subdirectory! (whole subdirectory is going to be compressed)

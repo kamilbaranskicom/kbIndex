@@ -146,34 +146,38 @@ document.addEventListener("DOMContentLoaded", () => {
       const checkedCheckboxes = form.querySelectorAll(
         'input[name="selected[]"]:checked'
       );
-      showOnlyNeededButtons();
+      updateButtonVisibility();
 
       if (checkedCheckboxes.length === 0) {
         document.getElementById("selectedMessage").innerText = "";
         return;
       }
 
-      let totalSize = 0;
-      let directoryCount = 0;
-      let fileCount = 0;
-      checkedCheckboxes.forEach((checkedCb) => {
-        // Find the parent row (tr) of the checked checkbox
-        const row = checkedCb.closest("tr");
-        // Find the 'size' td within that row and get its data-value
-        const sizeTd = row.querySelector("td.size");
-        if (sizeTd && sizeTd.dataset.value)
-          totalSize += parseFloat(sizeTd.dataset.value);
-        if (row.dataset.isdir === "1") directoryCount++;
-        if (row.dataset.isdir === "0") fileCount++;
-      });
-      document.getElementById("selectedMessage").innerText = `Selected ${
-        checkedCheckboxes.length
-      } items (directories: ${directoryCount}, files: ${fileCount}), total size: ${humanSize(
-        totalSize
-      )}.`; // TODO: humansize in JS
+      calculateTotalSizeOfSelectedItems(checkedCheckboxes);
     });
   });
 });
+
+function calculateTotalSizeOfSelectedItems(rows) {
+  let totalSize = 0;
+  let directoryCount = 0;
+  let fileCount = 0;
+  rows.forEach((checkedCb) => {
+    // Find the parent row (tr) of the checked checkbox
+    const row = checkedCb.closest("tr");
+    // Find the 'size' td within that row and get its data-value
+    const sizeTd = row.querySelector("td.size");
+    if (sizeTd && sizeTd.dataset.value)
+      totalSize += parseFloat(sizeTd.dataset.value);
+    if (row.dataset.isdir === "1") directoryCount++;
+    if (row.dataset.isdir === "0") fileCount++;
+  });
+  document.getElementById("selectedMessage").innerText = `Selected ${
+    rows.length
+  } items (directories: ${directoryCount}, files: ${fileCount}), total size: ${humanSize(
+    totalSize
+  )}.`;
+}
 
 function humanSize(bytes) {
   if (bytes <= 0) return "-";
@@ -206,7 +210,7 @@ function startZipProgress(files) {
     const data = JSON.parse(event.data);
 
     // Update your UI element
-    progressBar.style.width = data.percent + '%';
+    progressBar.style.width = data.percent + "%";
     statusMessage.innerText = `Preparing archive: (${data.percent}%)`;
 
     if (data.status === "done") {
@@ -223,97 +227,98 @@ function startZipProgress(files) {
   };
 }
 
-
 // checkboxes and file selection
 
 const tableBody = document.querySelector(".file-table tbody");
 const selectAllCheckbox = document.getElementById("selectAll");
-const checkboxes = Array.from(document.querySelectorAll('input[name="selected[]"]'));
+const checkboxes = Array.from(
+  document.querySelectorAll('input[name="selected[]"]')
+);
 
 let anchor = null;
 let snapshot = []; // Stan wszystkich checkboxów z momentu wybrania kotwicy
 
 function updateButtonVisibility() {
-    const buttonAll = document.querySelector("#zipAll");
-    const buttonSelected = document.querySelector("#zipSelected");
-    if (!buttonAll || !buttonSelected) return;
+  const buttonAll = document.querySelector("#zipAll");
+  const buttonSelected = document.querySelector("#zipSelected");
+  if (!buttonAll || !buttonSelected) return;
 
-    const checkedCount = checkboxes.filter(cb => cb.checked).length;
-    const totalCount = checkboxes.length;
+  const checkedCount = checkboxes.filter((cb) => cb.checked).length;
+  const totalCount = checkboxes.length;
 
-    if (checkedCount === 0 || checkedCount === totalCount) {
-        buttonAll.classList.remove("hidden");
-        buttonSelected.classList.add("hidden");
-    } else {
-        buttonAll.classList.add("hidden");
-        buttonSelected.classList.remove("hidden");
-    }
+  if (checkedCount === 0 || checkedCount === totalCount) {
+    buttonAll.classList.remove("hidden");
+    buttonSelected.classList.add("hidden");
+  } else {
+    buttonAll.classList.add("hidden");
+    buttonSelected.classList.remove("hidden");
+  }
 }
 
 /**
  * Logika zaznaczania - ujednolicona dla wiersza i checkboxa
  */
 function performSelection(targetCheckbox, isShift) {
-    const targetIdx = checkboxes.indexOf(targetCheckbox);
+  const targetIdx = checkboxes.indexOf(targetCheckbox);
 
-    if (isShift && anchor !== null) {
-        const anchorIdx = checkboxes.indexOf(anchor);
-        const min = Math.min(anchorIdx, targetIdx);
-        const max = Math.max(anchorIdx, targetIdx);
+  if (isShift && anchor !== null) {
+    const anchorIdx = checkboxes.indexOf(anchor);
+    const min = Math.min(anchorIdx, targetIdx);
+    const max = Math.max(anchorIdx, targetIdx);
 
-        // Stan zakresu zależy od tego, jaki stan ma kotwica
-        const rangeState = anchor.checked;
+    // Stan zakresu zależy od tego, jaki stan ma kotwica
+    const rangeState = anchor.checked;
 
-        checkboxes.forEach((cb, i) => {
-            if (i >= min && i <= max) {
-                // Elementy w aktualnym zakresie [kotwica <-> target]
-                cb.checked = rangeState;
-            } else {
-                // Elementy POZA zakresem wracają do stanu, który miały przed Shiftem
-                cb.checked = snapshot[i];
-            }
-        });
-    } else {
-        // Kliknięcie bez shiftu: ustawiamy nową kotwicę i zapamiętujemy stan wszystkiego
-        anchor = targetCheckbox;
-        snapshot = checkboxes.map(cb => cb.checked);
-    }
+    checkboxes.forEach((cb, i) => {
+      if (i >= min && i <= max) {
+        // Elementy w aktualnym zakresie [kotwica <-> target]
+        cb.checked = rangeState;
+      } else {
+        // Elementy POZA zakresem wracają do stanu, który miały przed Shiftem
+        cb.checked = snapshot[i];
+      }
+    });
+  } else {
+    // Kliknięcie bez shiftu: ustawiamy nową kotwicę i zapamiętujemy stan wszystkiego
+    anchor = targetCheckbox;
+    snapshot = checkboxes.map((cb) => cb.checked);
+  }
 
-    updateButtonVisibility();
+  updateButtonVisibility();
 }
 
 if (tableBody) {
-    // 1. Nawigacja Double-click
-    tableBody.addEventListener("dblclick", (e) => {
-        const row = e.target.closest("tr");
-        const link = row?.querySelector("td a");
-        if (link) window.location.href = link.href;
-    });
+  // 1. Nawigacja Double-click
+  tableBody.addEventListener("dblclick", (e) => {
+    const row = e.target.closest("tr");
+    const link = row?.querySelector("td a");
+    if (link) window.location.href = link.href;
+  });
 
-    // 2. Kliknięcie (Wiersz lub Checkbox)
-    tableBody.addEventListener("click", (e) => {
-        const row = e.target.closest("tr");
-        if (!row) return;
+  // 2. Kliknięcie (Wiersz lub Checkbox)
+  tableBody.addEventListener("click", (e) => {
+    const row = e.target.closest("tr");
+    if (!row) return;
 
-        const checkbox = row.querySelector('input[name="selected[]"]');
-        if (!checkbox || e.target.tagName === "A" || e.target.closest("a")) return;
+    const checkbox = row.querySelector('input[name="selected[]"]');
+    if (!checkbox || e.target.tagName === "A" || e.target.closest("a")) return;
 
-        // Jeśli kliknięto w wiersz (a nie w sam checkbox), odwracamy stan checkboxa
-        if (e.target.type !== "checkbox") {
-            checkbox.checked = !checkbox.checked;
-        }
+    // Jeśli kliknięto w wiersz (a nie w sam checkbox), odwracamy stan checkboxa
+    if (e.target.type !== "checkbox") {
+      checkbox.checked = !checkbox.checked;
+    }
 
-        performSelection(checkbox, e.shiftKey);
-    });
+    performSelection(checkbox, e.shiftKey);
+  });
 }
 
 // 3. Obsługa "Zaznacz wszystko"
 if (selectAllCheckbox) {
-    selectAllCheckbox.addEventListener("change", function() {
-        checkboxes.forEach(cb => cb.checked = this.checked);
-        anchor = null; // Reset kotwicy po masowej akcji
-        updateButtonVisibility();
-    });
+  selectAllCheckbox.addEventListener("change", function () {
+    checkboxes.forEach((cb) => (cb.checked = this.checked));
+    anchor = null; // Reset kotwicy po masowej akcji
+    updateButtonVisibility();
+  });
 }
 
 // Inicjalizacja

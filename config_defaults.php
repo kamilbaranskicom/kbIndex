@@ -5,6 +5,7 @@ $configDefaults = [
     'titleSuffix'     => ' [kbIndex]',
     'maxSizeLimit'    => 20 * 1024 * 1024 * 1024, // 20 GB
     'maxDiskSpaceLimit' => 20 * 1024 * 1024, // 20 MB
+    'displayNewestItem' => true,
     'footerUser'      => '<a href="https://github.com/kamilbaranskicom/kbIndex/">kbIndex</a> by <a href="https://kamilbaranski.com/">Kamil Barański</a>',
     'descriptions'    => ['.broken' => 'Broken symbolic link'],
     // 'allowDeletion'   => false,  // TODO - allow deletion and maybe upload?
