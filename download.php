@@ -70,8 +70,8 @@ function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $c
         die("Error: Selected payload (" . humanSize($totalWeight) . ") exceeds the " . humanSize($config['maxSizeLimit']) . " limit.");
     }
     // Validate that we have enough space to create the archive
-    if ($totalWeight > disk_free_space(sys_get_temp_dir())) {
-        die("Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . ".");
+    if ($totalWeight > (disk_free_space(sys_get_temp_dir()) - $config['maxDiskSpaceLimit'])) {
+        die("Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . " + additional " . humanSize($config['maxDiskSpaceLimit']) . ".");
     }
     if (!empty($filesToZip)) {
         streamZip($filesToZip, $name, $physicalPath, $totalWeight, $allFiles, $isAsyncRequest);
