@@ -181,7 +181,7 @@ function parseAutoindexConf(string $filePath): array {
  */
 function humanSize($bytes): string {
     if ($bytes <= 0) return "-";
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
     $i = floor(log($bytes, 1024));
     return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
 }
@@ -706,7 +706,8 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
                 $dirCount  = $counts['dirs'] ?? 0; // true counts as 1
                 $fileCount = $counts['files'] ?? 0; // false counts as 0
 
-                echo '&copy; ' . date('Y') . ' ' . $config['footerUser'] . ' &#149; ';
+                echo '&copy; ' . date('Y') . ' ' . $config['footerUser'] . ' &bullet; ';
+                echo '<span id="selectedMessage"></span> ';
                 echo 'Total ' . count($fileList) . ' items ';
                 echo '(directories: ' . $dirCount . ', ';
                 echo 'files: ' . $fileCount . '), ';
