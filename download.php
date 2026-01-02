@@ -88,7 +88,7 @@ function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $c
  * @return void
  */
 function streamZip(array $files, string $baseName, string $currentPath, $totalWeight, bool $preserveRoot = false, bool $isAsyncRequest = false): void {
-    set_time_limit(900);
+    set_time_limit(900);    // 15 minutes max
 
     $timestamp = date('Ymd-His');
     $safeBaseName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $baseName);
@@ -150,16 +150,7 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
     } else {
         // no JS; POST method
         if ($returnCode === 0 && file_exists($tmpZip)) {
-            if (ob_get_level()) ob_end_clean();
-
-            header('Content-Type: application/zip');
-            header('Content-Disposition: attachment; filename="' . $finalFileName . '"');
-            header('Content-Length: ' . filesize($tmpZip));
-            header('Cache-Control: no-cache, must-revalidate');
-            header('Pragma: no-cache');
-
-            readfile($tmpZip);
-            if (file_exists($tmpZip)) unlink($tmpZip);
+            sendZipFile($tmpZip, $finalFileName);
             exit;
         }
         if (file_exists($tmpZip)) unlink($tmpZip);
@@ -168,6 +159,35 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
 
     chdir($oldDir);
 }
+
+
+/**
+ * Sends the generated ZIP file to the client for download and deletes the file.
+ *
+ * @param string $tmpZip The temporary path to the generated ZIP file.
+ * @param string $finalFileName The desired filename for the download.
+ * returns true on success
+ */
+function sendZipFile(string $tmpZip, string $finalFileName, bool $deleteAfter = true): bool {
+    if (file_exists($tmpZip)) {
+        if (ob_get_level()) ob_end_clean();
+
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . basename($finalFileName) . '"');
+        header('Content-Length: ' . filesize($tmpZip));
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Pragma: no-cache');
+
+        readfile($tmpZip);
+        if ($deleteAfter) {
+            unlink($tmpZip);
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
+
 
 /**
  * log to file
@@ -229,6 +249,10 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
     $startTime = time();
     $timeout = 300; // 5 minutes safety net
 
+    // +2kB of meaningful motto as a padding
+    echo ": " . str_repeat("Don't waste time listening to bad music! ", 2050 / 41) . "\n\n";
+    flush();
+
     while (true) {
         if (time() - $startTime > $timeout) break;
 
@@ -276,22 +300,16 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
  * checks for file existence, and streams the file to the client.
  */
 function handleDownloadAction() {
-    $tmpZip = basename($_GET['tempFileName']) ?? die("No fileName given.");
-    $finalFileName = basename($_GET['finalFileName']) ?? 'download_' . date('Ymd-His') . '.zip';
+    $tmpZip = basename($_GET['tempFileName']);
+    if (!$tmpZip) {
+        die("No fileName given.");
+    };
+    $finalFileName = basename($_GET['finalFileName'] ?? 'download_' . date('Ymd-His') . '.zip');
 
     $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $tmpZip;
 
     if (file_exists($tmpZip)) {
-        if (ob_get_level()) ob_end_clean();
-
-        header('Content-Type: application/zip');
-        header('Content-Disposition: attachment; filename="' . $finalFileName . '"');
-        header('Content-Length: ' . filesize($tmpZip));
-        header('Cache-Control: no-cache, must-revalidate');
-        header('Pragma: no-cache');
-
-        readfile($tmpZip);
-        if (file_exists($tmpZip)) unlink($tmpZip);
+        sendZipFile($tmpZip, $finalFileName);
         exit;
     }
 }

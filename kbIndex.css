@@ -42,9 +42,13 @@ body::before {
 
 .file-table th,
 .file-table td {
-  border-bottom: 1px solid #ddd;
+  /* border-bottom: 1px solid #ddd;*/
   padding: 6px 10px;
   text-align: left;
+}
+
+.file-table tr {
+  border-bottom: 1px solid #ddd;
 }
 
 .file-table th {
@@ -61,7 +65,7 @@ body::before {
 
 a {
   text-decoration: none;
-  border-bottom: calc(1em/15) dotted;
+  border-bottom: calc(1em / 15) dotted;
 }
 
 .file-table .checkbox,
@@ -159,9 +163,11 @@ th.asc {
   justify-content: center;
   z-index: 1000;
 }
+
 #status-box.hidden {
   display: none;
 }
+
 #status-content {
   background-color: #fff;
   padding: 20px;
@@ -169,28 +175,63 @@ th.asc {
   text-align: center;
   width: 300px;
 }
+
 #status-message {
   margin: 15px 0;
 }
+
 #status-progress {
   width: 100%;
-  height: 20px;
+  height: 100%;
 }
+
 #status-details {
   margin-top: 10px;
   font-size: 12px;
   color: #555;
 }
 
-/* Stylizuje cały wiersz, jeśli znajduje się w nim zaznaczony checkbox */
 .file-table tbody tr:has(input[name="selected[]"]:checked) {
-    background-color: #f6f8b4; /* Jasnoniebieskie podświetlenie (jak w Gmailu) */
-    transition: background-color 0.2s ease; /* Płynne przejście koloru */
+  background-color: #f6f8b4;
+  transition: background-color 0.2s ease;
 }
 
-/* Opcjonalnie: zmiana koloru tekstu lub obramowania dla zaznaczonego wiersza */
 .file-table tbody tr:has(input[name="selected[]"]:checked) td {
-    color: #165dbb;
-    border-bottom-color: #d2e3fc;
+  color: #165dbb;
+  border-bottom-color: #d2e3fc;
 }
 
+
+
+.progress-container {
+    width: 100%;
+    height: 24px;
+    background-color: #eee;
+    border-radius: 12px;
+    overflow: hidden; /* Obcina paski do zaokrąglonych rogów */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    margin: 10px 0;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: #2196F3;
+    background-image: linear-gradient(
+        45deg, 
+        rgba(255,255,255,.15) 25%, 
+        transparent 25%, 
+        transparent 50%, 
+        rgba(255,255,255,.15) 50%, 
+        rgba(255,255,255,.15) 75%, 
+        transparent 75%, 
+        transparent
+    );
+    background-size: 40px 40px;
+    transition: width 0.4s ease; /* Płynne przesuwanie się paska przy zmianie % */
+    animation: move-stripes 1s linear infinite; /* To wprawia paski w ruch */
+}
+
+@keyframes move-stripes {
+    from { background-position: 40px 0; }
+    to { background-position: 0 0; }
+}

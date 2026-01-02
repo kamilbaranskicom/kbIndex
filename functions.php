@@ -723,7 +723,9 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
             <div id="status-content">
                 <h2>Preparing your download...</h2>
                 <div id="status-message">Initializing...</div>
-                <progress id="status-progress" value="0" max="100"></progress>
+                <div class="progress-container">
+                    <div id="status-progress" class="progress-bar-fill" style="width: 0%;"></div>
+                </div>
                 <div id="status-details"></div>
             </div>
         </div>
