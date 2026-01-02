@@ -712,9 +712,10 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
                 echo '(directories: ' . $dirCount . ', ';
                 echo 'files: ' . $fileCount . '), ';
                 echo 'size: ' . humanSize(array_sum(array_column($fileList, 'size'))) . '. ';
-                echo 'Newest modification: ';
+                /* echo 'Newest file modification: ';
                 $newest = max(array_column($fileList, 'mtime'));
                 echo date("Y-m-d H:i", $newest) . '.';
+                */ 
                 ?>
             </small>
         </footer>
