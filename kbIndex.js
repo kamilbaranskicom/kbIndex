@@ -164,13 +164,13 @@ function startZipProgress(files) {
   const filesJson = JSON.stringify(files);
   const url = `?action=zip&files=${encodeURIComponent(filesJson)}`;
 
-  console.log(filesJson);
-  console.log(url);
+  // console.log(filesJson);
+  // console.log(url);
 
   const eventSource = new EventSource(url);
 
   eventSource.onmessage = (event) => {
-    console.log(event);
+    // console.log(event);
     const data = JSON.parse(event.data);
 
     // Update your UI element

@@ -261,9 +261,6 @@ function handleDownloadAction() {
     $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $tmpZip;
     $finalFileName = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $finalFileName;
 
-    // if ($returnCode === 0 && file_exists($tmpZip)) {
-
-    // TODO IMPORTANT!: check if not /etc/pa..wd etc.
     if (file_exists($tmpZip)) {
         if (ob_get_level()) ob_end_clean();
 
