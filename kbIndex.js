@@ -121,12 +121,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const submitter = e.submitter; // Przycisk, który wywołał submit
     let files = [];
 
-    if (submitter.name === "zip_all") {
+    if (submitter.id === "zipAll") {
       // Pobierz wszystkie pliki z tabeli
       files = Array.from(form.querySelectorAll('input[name="selected[]"]')).map(
         (cb) => cb.value
       );
-    } else if (submitter.name === "zip_selected") {
+    } else if (submitter.id === "zipSelected") {
       // Pobierz tylko zaznaczone
       files = Array.from(
         form.querySelectorAll('input[name="selected[]"]:checked')
@@ -253,6 +253,15 @@ function updateButtonVisibility() {
     buttonAll.classList.add("hidden");
     buttonSelected.classList.remove("hidden");
   }
+
+  const buttonDelete = document.querySelector("#deleteSelected");
+  if (buttonDelete) {
+    if (checkedCount > 0) {
+      buttonDelete.classList.remove("hidden");
+    } else {
+      buttonDelete.classList.add("hidden");
+    }
+  }
 }
 
 /**
@@ -323,3 +332,49 @@ if (selectAllCheckbox) {
 
 // Inicjalizacja
 updateButtonVisibility();
+
+// Obsługa kliknięcia w Delete:
+const btnDelete = document.querySelector("#deleteSelected");
+if (btnDelete) {
+  btnDelete.addEventListener("click", function () {
+    // Pobieramy zaznaczone wiersze, żeby sprawdzić czy są tam foldery
+    const selectedRows = Array.from(
+      document.querySelectorAll(".file-table tbody tr")
+    ).filter((row) => row.querySelector('input[name="selected[]"]:checked'));
+
+    const selectedNames = selectedRows.map(
+      (row) => row.querySelector('input[name="selected[]"]').value
+    );
+    const hasDirectory = selectedRows.some((row) => row.dataset.isdir === "1");
+
+    if (selectedNames.length === 0) return;
+
+    // Budujemy dynamiczny komunikat
+    let msg = `Czy na pewno chcesz usunąć te elementy: ${selectedNames.length} szt.?`;
+    if (hasDirectory) {
+      msg =
+        `UWAGA! Wybrano co najmniej jeden folder.\n\n` +
+        `Usunięcie folderu spowoduje BEZPOWROTNE skasowanie wszystkich plików i podfolderów wewnątrz.\n\n` +
+        `Czy na pewno chcesz kontynuować?`;
+    }
+
+    if (confirm(msg)) {
+      const formData = new FormData();
+      selectedNames.forEach((name) => formData.append("selected[]", name));
+
+      fetch("?action=delete", {
+        method: "POST",
+        body: formData,
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success") {
+            window.location.reload();
+          } else {
+            alert("Błąd: " + data.message);
+          }
+        })
+        .catch((err) => console.error("Delete error:", err));
+    }
+  });
+}

@@ -37,9 +37,20 @@ if (!is_dir($physicalPath)) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $action = $_GET['action'] ?? $_POST['action'] ?? 'list';    // list isn't not working here
+
+    switch ($action) {
+        case 'zipAll':
+        case 'zipSelected':
+        case 'zip':
+            handlePostRequest($physicalPath, $action, $config);
+            break;
+        case 'delete':
+            handleDeleteRequest($physicalPath, $requestUri, $config);
+            break;
+    }
     // for clients without JS
-    handlePostRequest($physicalPath, $config);
-    exit;
 } else {
 
     $action = $_GET['action'] ?? 'list';
@@ -54,6 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // PHASE 2: Serve the actual binary .zip file
             handleDownloadAction();
             break;
+
+        case 'delete':
+            handleDeleteRequest($physicalPath, $requestUri, $config);
+            break;
+
 
         case 'list':
         default:

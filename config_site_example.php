@@ -6,6 +6,7 @@ $config = array_merge($config, [
     'maxSizeLimit'    => 4 * 1024 * 1024 * 1024, // 4 GB
     'maxDiskSpaceLimit' => 1 * 1024 * 1024 * 1024, // 1 GB
     //    'displayNewestItem' => true,
+    //    'logFile'        => __DIR__ . '/kbIndex.activity.log',
     'footerUser'      => '<a href="https://yourcompany.net/">Your Company</a>',
     //    'descriptions'    => ['.broken' => 'Broken symbolic link'],
     //    'ignorePatterns'  => [    // Beware! The ignorePatterns doesn't work when downloading a subdirectory! (whole subdirectory is going to be compressed)
@@ -17,6 +18,14 @@ $config = array_merge($config, [
     //        '.DS_Store',
     //        'index.php',
     //        '*.log',
-    //        'node_modules'
+    //        'node_modules',
+    //        'kbIndex.activity.log',
     //    ],
+        'permissions'     => [
+        '/'             => ['allowDelete' => false], // Główny folder zablokowany
+        '/uploads'      => ['allowDelete' => true],  // Można kasować w /uploads
+        '/temp'         => ['allowDelete' => true],
+        '/kbIndex/testfolder/2ndfolder' => ['allowDelete' => true],
+        '/yt'           => ['allowDelete' => true],
+    ],
 ]);

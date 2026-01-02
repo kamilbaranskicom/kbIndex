@@ -29,28 +29,8 @@ function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $c
         $files = $allowedFiles;
     }
 
-    // - sanitize to prevent path traversal (just in case of a refactor, 'cause it is done also on $_GET['files'] in index.php)
-    $files = array_map('basename', $files);
-
-    // convert $allowedFiles to $map helper array:
-    //      $map['file.txt'] = 40               // (bytes),
-    //      $map['file.mp3'] = 6 543 210        // (bytes),
-    //      $map['not-allowed-file.git'] = -1   // (status: not allowed)
-    //      etc.
-    $map = [];
-    foreach ($allowedFiles as $allowedFile) {
-        $map[$allowedFile['name']] = $allowedFile['size'] ?? -1;
-    }
-
-    // - remove unAllowed files (not existing in getFileList())
-    $files = array_filter($files, function ($filename) use ($map) {
-        return isset($map[$filename]) && ($map[$filename] >= 0);
-    });
-
-    // - check if every file exists
-    $files = array_filter($files, function ($filename) use ($physicalPath) {
-        return file_exists($physicalPath . DIRECTORY_SEPARATOR . $filename);
-    });
+    // reject the unallowed files from $files
+    $files = filterAllowedFiles($files, $allowedFiles, $physicalPath, $map);
     // THE $FILES LIST IS LEGIT. ALL THE FILES ARE ALLOWED TO ARCHIVE/DOWNLOAD.
     // TODO: shall we check the subdirectories and use allowed files only? At the moment we allow for all the files (subdirectory/*)
 
@@ -77,6 +57,35 @@ function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $c
         streamZip($filesToZip, $name, $physicalPath, $totalWeight, $allFiles, $isAsyncRequest);
     }
 }
+
+
+function filterAllowedFiles($files, $allowedFiles, $physicalPath, &$map) {
+    // - sanitize to prevent path traversal (just in case of a refactor, 'cause it is done also on $_GET['files'] in index.php)
+    $files = array_map('basename', $files);
+
+    // convert $allowedFiles to $map helper array:
+    //      $map['file.txt'] = 40               // (bytes),
+    //      $map['file.mp3'] = 6 543 210        // (bytes),
+    //      $map['not-allowed-file.git'] = -1   // (status: not allowed)
+    //      etc.
+    $map = [];
+    foreach ($allowedFiles as $allowedFile) {
+        $map[$allowedFile['name']] = $allowedFile['size'] ?? -1;
+    }
+
+    // - remove unAllowed files (not existing in getFileList())
+    $files = array_filter($files, function ($filename) use ($map) {
+        return isset($map[$filename]) && ($map[$filename] >= 0);
+    });
+
+    // - check if every file exists
+    $files = array_filter($files, function ($filename) use ($physicalPath) {
+        return file_exists($physicalPath . DIRECTORY_SEPARATOR . $filename);
+    });
+
+    return $files;
+};
+
 
 /**
  * Compresses selected files and streams the result.
@@ -315,11 +324,11 @@ function handleDownloadAction() {
 }
 
 
-function handlePostRequest(string $physicalPath, array $config): void {
-    if (isset($_POST['zip_all'])) {
+function handlePostRequest(string $physicalPath, string $action, array $config): void {
+    if ((isset($action) && ($action === 'zipAll'))) {
         // User clicked "Download all"
         handleZipRequest($physicalPath, [], true, $config, false);
-    } elseif (isset($_POST['zip_selected'])) {
+    } elseif ((isset($action)) && ($action === 'zipSelected')) {
         // User clicked "Download selected"
         $selectedFiles = $_POST['selected'] ?? [];
         if (empty($selectedFiles)) {

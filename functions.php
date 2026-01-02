@@ -46,6 +46,11 @@ function mergeConfigs(array $configA, array $configB): array {
         $configB['descriptions'] ?? []
     );
 
+    $merged['permissions'] = array_merge(
+        $configA['permissions'] ?? [],
+        $configB['permissions'] ?? []
+    );
+
     return $merged;
 }
 
@@ -663,8 +668,11 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
 
         <form id="kbIndexForm" action="?" method="post">
             <p class="download-buttons">
-                <button type="submit" name="zip_all" id="zipAll">📦 Download all</button>
-                <button type="submit" name="zip_selected" id="zipSelected">📁 Download selected</button>
+                <button type="submit" name="action" value="zipAll" id="zipAll">📦 Download all</button>
+                <button type="submit" name="action" value="zipSelected" id="zipSelected">📁 Download selected</button>
+                <?php if (isActionAllowed('allowDelete', $path, $config)) { ?>
+                    <button type="button" name="action" value="delete" id="deleteSelected" class="hidden btn-danger">🗑️ Delete selected</button>
+                <?php }; ?>
                 <span id="selectedMessage"></span>
             </p>
 
@@ -817,4 +825,122 @@ function debug2mime($mime = 'cokolwiek/cokolwiek') {
     header('Pragma: no-cache');
     readfile('kbIndex.js');
     die();
+}
+
+
+/**
+ * Checks if a specific action is allowed for a given path based on the configuration.
+ *
+ * @param string $action The action to check (e.g., 'allowDelete').
+ * @param string $currentRelativePath The relative path to the directory being checked.
+ * @param array $config The configuration array containing permissions.
+ * @return bool True if the action is allowed, false otherwise.
+ */
+function isActionAllowed($action, $currentRelativePath, $config) {
+    // Normalizujemy ścieżkę (zawsze zaczynamy od /)
+    $path = '/' . ltrim($currentRelativePath, '/');
+    $path = rtrim($path, '/');
+    if ($path === '') $path = '/';
+
+    $allowed = false;
+
+    // Szukamy w configu
+    foreach ($config['permissions'] as $prefix => $perms) {
+        $prefix = rtrim($prefix, '/');
+        if ($prefix === '') $prefix = '/';
+
+        // Jeśli ścieżka zaczyna się od prefixu z configa
+        if ($path === $prefix || strpos($path, $prefix . '/') === 0) {
+            if (isset($perms[$action])) {
+                $allowed = $perms[$action];
+            }
+        }
+    }
+
+    return $allowed;
+}
+
+function handleDeleteRequest($physicalPath, $relativeRequestPath, $config) {
+    $filesToDelete = $_POST['selected'] ?? [];
+
+    // 1. Sprawdzenie uprawnień dla aktualnego folderu
+    if (!isActionAllowed('allowDelete', $relativeRequestPath, $config)) {
+        logActivity("NIEAUTORYZOWANA PRÓBA USUNIĘCIA w: $relativeRequestPath", $config);
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'message' => 'Brak uprawnień do usuwania w tym miejscu.']);
+        exit;
+    }
+
+    $allowedFiles = getFileList($physicalPath, $config);
+    // check if we have any files from ignorePatterns -> we can't delete the file as it might be .htaccess or kbIndexConfigLocal.
+    $filesToDelete = filterAllowedFiles($filesToDelete, $allowedFiles, $physicalPath, $map);
+
+    $deletedCount = 0;
+    $errors = [];
+
+    foreach ($filesToDelete as $file) {
+        // 2. Bezpieczeństwo: basename() chroni przed atakami typu ../../../
+        $safeFile = basename($file);
+        $fullPath = $physicalPath . DIRECTORY_SEPARATOR . $safeFile;
+
+        if (file_exists($fullPath)) {
+            // 3. Wywołanie nowej funkcji rekurencyjnej
+            if (deleteRecursive($fullPath)) {
+                $deletedCount++;
+                logActivity("USUNIĘTO: $relativeRequestPath/$safeFile", $config);
+            } else {
+                $errors[] = "Nie udało się usunąć: " . $safeFile;
+            }
+        }
+    }
+
+    header('Content-Type: application/json');
+    if ($deletedCount > 0 && empty($errors)) {
+        echo json_encode(['status' => 'success', 'deleted' => $deletedCount]);
+    } else {
+        echo json_encode([
+            'status' => count($errors) > 0 ? 'partial' : 'success',
+            'deleted' => $deletedCount,
+            'message' => implode(', ', $errors)
+        ]);
+    }
+    exit;
+}
+
+function deleteRecursive($path) {
+    if (!file_exists($path)) {
+        return true;
+    }
+
+    if (!is_dir($path)) {
+        return unlink($path);
+    }
+
+    foreach (scandir($path) as $item) {
+        if ($item == '.' || $item == '..') {
+            continue;
+        }
+
+        if (!deleteRecursive($path . DIRECTORY_SEPARATOR . $item)) {
+            return false;
+        }
+    }
+
+    return rmdir($path);
+}
+
+/**
+ * Loguje zdarzenia do pliku activity.log
+ */
+function logActivity($message, $config) {
+    if (!$config['logActivity']) {
+        return;
+    }
+    $timestamp = date("Y-m-d H:i:s");
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+    $logEntry = "[$timestamp] [IP: $ip] $message" . PHP_EOL;
+
+    // Używamy FILE_APPEND, żeby nie nadpisywać pliku
+    file_put_contents($config['logFile'] ?? __DIR__ . '/activity.log', $logEntry, FILE_APPEND);
 }

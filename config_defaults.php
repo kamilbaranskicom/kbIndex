@@ -6,6 +6,7 @@ $configDefaults = [
     'maxSizeLimit'    => 20 * 1024 * 1024 * 1024, // 20 GB
     'maxDiskSpaceLimit' => 20 * 1024 * 1024, // 20 MB
     'displayNewestItem' => true,
+    'logFile'        => __DIR__ . '/kbIndex.activity.log',
     'footerUser'      => '<a href="https://github.com/kamilbaranskicom/kbIndex/">kbIndex</a> by <a href="https://kamilbaranski.com/">Kamil Barański</a>',
     'descriptions'    => ['.broken' => 'Broken symbolic link'],
     // 'allowDeletion'   => false,  // TODO - allow deletion and maybe upload?
@@ -18,6 +19,13 @@ $configDefaults = [
         '.DS_Store',
         'index.php',
         '*.log',
-        'node_modules'
+        'node_modules',
+        'kbIndex.activity.log',
+    ],
+    'permissions'     => [
+        '/'             => ['allowDelete' => false], // Główny folder zablokowany
+        '/uploads'      => ['allowDelete' => true],  // Można kasować w /uploads
+        '/temp'         => ['allowDelete' => true],
+        '/kbIndex/testfolder/2ndfolder' => ['allowDelete' => true],
     ],
 ];

@@ -119,6 +119,10 @@ a {
   font-size: 14px;
 }
 
+.btn-danger {
+  background-color: #FF8080;
+}
+
 .hidden {
   display: none !important;
 }
