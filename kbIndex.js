@@ -111,7 +111,6 @@ function updateURLParameters(newParams) {
   return url.toString();
 }
 
-
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("kbIndexForm");
   if (!form) return;
@@ -150,7 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (checkedCheckboxes.length === 0) {
         document.getElementById("selectedMessage").innerText = "";
         return;
-      };
+      }
 
       let totalSize = 0;
       let directoryCount = 0;
@@ -162,12 +161,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const sizeTd = row.querySelector("td.size");
         if (sizeTd && sizeTd.dataset.value)
           totalSize += parseFloat(sizeTd.dataset.value);
-        if (row.dataset.isdir==="1") directoryCount++;
-        if (row.dataset.isdir==="0") fileCount++;
+        if (row.dataset.isdir === "1") directoryCount++;
+        if (row.dataset.isdir === "0") fileCount++;
       });
       document.getElementById("selectedMessage").innerText = `Selected ${
         checkedCheckboxes.length
-      } items (directories: ${directoryCount}, files: ${fileCount}), total size: ${humanSize(totalSize)}.`; // TODO: humansize in JS
+      } items (directories: ${directoryCount}, files: ${fileCount}), total size: ${humanSize(
+        totalSize
+      )}.`; // TODO: humansize in JS
     });
   });
 });
@@ -220,61 +221,46 @@ function startZipProgress(files) {
   };
 }
 
-
+const checkboxes = Array.from(
+  document.querySelectorAll('input[name="selected[]"]')
+);
 const selectAllCheckbox = document.getElementById("selectAll");
-const checkboxes = document.querySelectorAll('input[name="selected[]"]');
 
-// Zmienna do przechowywania ostatnio klikniętego checkboxa
-let lastChecked = null;
+// "Kotwica" to ostatni checkbox zaznaczony BEZ shiftu
+let anchor = null;
 
-checkboxes.forEach((checkbox, index) => {
-    checkbox.addEventListener('click', function(e) {
-        // Sprawdzamy, czy klawisz Shift był wciśnięty ORAZ czy to nie jest pierwsze kliknięcie
-        if (e.shiftKey && lastChecked) {
-            let start = false;
-            let end = false;
+checkboxes.forEach((checkbox) => {
+  checkbox.addEventListener("click", function (e) {
+    if (e.shiftKey && anchor) {
+      const startInd = checkboxes.indexOf(anchor);
+      const endInd = checkboxes.indexOf(this);
 
-            // Przechodzimy przez wszystkie checkboxy, aby znaleźć zakres "pomiędzy"
-            checkboxes.forEach(cb => {
-                // Jeśli trafimy na aktualnie kliknięty lub poprzednio kliknięty - przełączamy flagę zakresu
-                if (cb === this || cb === lastChecked) {
-                    start = !start;
-                    if (start) end = true; // Zaczęliśmy zaznaczanie
-                }
+      const min = Math.min(startInd, endInd);
+      const max = Math.max(startInd, endInd);
 
-                if (start || end) {
-                    cb.checked = this.checked; // Ustawiamy stan taki sam, jak tego klikniętego
-                    if (cb === this || cb === lastChecked) {
-                        if (!start) end = false; // Kończymy zaznaczanie
-                    }
-                }
-            });
+      // Pobieramy stan elementu, który właśnie kliknęliśmy (true/false)
+      const newState = this.checked;
+
+      // Przechodzimy przez zakres
+      for (let i = min; i <= max; i++) {
+        // POMIJAMY kotwicę - jej stan ma zostać taki, jaki był w momencie
+        // gdy stała się kotwicą (czyli zazwyczaj zaznaczona)
+        if (checkboxes[i] !== anchor) {
+          checkboxes[i].checked = newState;
         }
-
-        // Zapisujemy ten checkbox jako ostatnio kliknięty dla następnej operacji
-        lastChecked = this;
-    });
+      }
+    } else {
+      // Jeśli klikasz normalnie (bez shiftu), ten element zostaje nową kotwicą
+      anchor = this;
+    }
+  });
 });
 
-// Twój istniejący kod dla "Zaznacz wszystko"
-selectAllCheckbox.addEventListener("change", function () {
-    checkboxes.forEach((cb) => {
-        cb.checked = this.checked;
-    });
-    // Opcjonalnie: resetujemy lastChecked przy "Zaznacz wszystko", 
-    // aby uniknąć dziwnych skoków po masowym zaznaczeniu
-    lastChecked = null; 
-});
-
-
-/*
-const selectAllCheckbox = document.getElementById("selectAll");
-// Pobieramy wszystkie checkboxy, które mają nazwę "selected[]"
-const checkboxes = document.querySelectorAll('input[name="selected[]"]');
-
+// Obsługa "Zaznacz wszystko"
 selectAllCheckbox.addEventListener("change", function () {
   checkboxes.forEach((cb) => {
     cb.checked = this.checked;
   });
+  // Po kliknięciu "Zaznacz wszystko" resetujemy kotwicę
+  anchor = null;
 });
-*/
