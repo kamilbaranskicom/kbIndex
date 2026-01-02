@@ -1,6 +1,5 @@
-test.wav    Lead vocal - Neumann U87
-test.mp3    Breakbeat from 1994 session
-test.txt    Session notes and gear list
+test.wav    cowbell uncompressed
+test.mp3    cowbell compressed
 test.htm    some webpage
 1.txt       We do natural sort
 2.txt       which handles numbers better
@@ -9,3 +8,4 @@ test.htm    some webpage
 20.txt      and this also.
 files.bbs   This descript.ion (ftp/BBS style)
 2ndfolder   Welcome to kbIndex test folder!
+folder      Folder with polish diacritics
