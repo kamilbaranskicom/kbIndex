@@ -148,6 +148,7 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
     if ($isAsyncRequest) {
         sendProgressStream($tmpZip, $finalFileName, $doneMarker, $stats);
     } else {
+        // no JS; POST method
         if ($returnCode === 0 && file_exists($tmpZip)) {
             if (ob_get_level()) ob_end_clean();
 
@@ -247,11 +248,12 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
         echo "data: " . json_encode([
             'percent' => $progress,
             'status' => $isDone ? 'done' : 'progress',
-            'fileName' => basename($tmpZip),
-            'stats' => [
-                'totalFolders' => $stats['dirs'],
-                'totalFiles' => $stats['files']
-            ],
+            // 'fileName' => basename($tmpZip),
+            // 'finalFileName' => $finalFileName,
+            // 'stats' => [
+            //     'totalFolders' => $stats['dirs'],
+            //     'totalFiles' => $stats['files']
+            // ],
             'downloadUrl' => $isDone ? '?action=download&tempFileName=' . basename($tmpZip) . '&finalFileName=' . basename($finalFileName) : null
         ]) . "\n\n";
 
@@ -278,7 +280,6 @@ function handleDownloadAction() {
     $finalFileName = basename($_GET['finalFileName']) ?? 'download_' . date('Ymd-His') . '.zip';
 
     $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $tmpZip;
-    $finalFileName = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $finalFileName;
 
     if (file_exists($tmpZip)) {
         if (ob_get_level()) ob_end_clean();

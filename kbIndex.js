@@ -146,6 +146,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const checkedCheckboxes = form.querySelectorAll(
         'input[name="selected[]"]:checked'
       );
+      showOnlyNeededButtons();
+
       if (checkedCheckboxes.length === 0) {
         document.getElementById("selectedMessage").innerText = "";
         return;
@@ -264,3 +266,21 @@ selectAllCheckbox.addEventListener("change", function () {
   // Po kliknięciu "Zaznacz wszystko" resetujemy kotwicę
   anchor = null;
 });
+
+function showOnlyNeededButtons() {
+  const buttonDownloadAll = document.querySelector("#zipAll");
+  const buttonDownloadSelected = document.querySelector("#zipSelected");
+  if (
+    checkboxes.every((cb) => !cb.checked) ||
+    checkboxes.every((cb) => cb.checked)
+  ) {
+    console.log(checkboxes);
+    buttonDownloadAll.classList.remove("hidden");
+    buttonDownloadSelected.classList.add("hidden");
+  } else {
+    buttonDownloadAll.classList.add("hidden");
+    buttonDownloadSelected.classList.remove("hidden");
+  }
+}
+
+showOnlyNeededButtons();

@@ -662,9 +662,10 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
         <h1><?php echo getBreadcrumbsHtml($breadcrumbs); ?></h1>
 
         <form id="kbIndexForm" action="?" method="post">
-            <p>
-                <button type="submit" name="zip_all">📦 Download all</button>
-                <button type="submit" name="zip_selected">📁 Download selected</button>
+            <p class="download-buttons">
+                <button type="submit" name="zip_all" id="zipAll">📦 Download all</button>
+                <button type="submit" name="zip_selected" id="zipSelected">📁 Download selected</button>
+                <span id="selectedMessage"></span>
             </p>
 
             <table class="file-table">
@@ -707,7 +708,6 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
                 $fileCount = $counts['files'] ?? 0; // false counts as 0
 
                 echo '&copy; ' . date('Y') . ' ' . $config['footerUser'] . ' &bullet; ';
-                echo '<span id="selectedMessage"></span> ';
                 echo 'Total ' . count($fileList) . ' items ';
                 echo '(directories: ' . $dirCount . ', ';
                 echo 'files: ' . $fileCount . '), ';
