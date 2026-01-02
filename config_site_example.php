@@ -6,7 +6,7 @@ $config = array_merge($config, [
     'maxSizeLimit'    => 4 * 1024 * 1024 * 1024, // 4 GB
     'footerUser'      => '<a href="https://yourcompany.net/">Your Company</a>',
 //    'descriptions'    => ['.broken' => 'Broken symbolic link'],
-//    'ignorePatterns'  => [
+//    'ignorePatterns'  => [    // Beware! The ignorePatterns doesn't work when downloading a subdirectory! (whole subdirectory is going to be compressed)
 //        '.',
 //        '..',
 //        'kbIndex',
