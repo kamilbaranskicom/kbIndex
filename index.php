@@ -6,17 +6,11 @@ ini_set('display_errors', 1);
 
 define('KB_INDEX_URI', '/kbIndex/'); // URL path to the tool folder
 
-require_once __DIR__ . '/config_defaults.php';
-if (file_exists(__DIR__ . '/config_site.php')) {
-    require_once __DIR__ . '/config_site.php';
-}
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/download.php';
 
-// merge configs from config_defaults and config_site, than parse apache config and merge with default config
-// (PS. shouldn't configs be more important than autoindex.conf?)
-$config = mergeConfigs($configDefaults, $configSite ?? []);
-$config = mergeConfigs(parseAutoindexConf('/etc/apache2/mods-available/autoindex.conf'), $config);
+
+$config = loadConfigs(__DIR__ . './config_defaults.php', __DIR__ . './config_site.php', '/etc/apache2/mods-available/autoindex.conf');
 
 // 1. Get the logical URI path (e.g., /files/a/)
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -49,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
         case 'zip':
             // PHASE 1: Calculate weight and start SSE stream
-            handleZipRequest($physicalPath, json_decode($_GET['files'], true), isset($_GET['all']), $config, true);
+            handleZipRequest($physicalPath, array_map('basename', json_decode($_GET['files'], true)), isset($_GET['all']), $config, true);
             break;
 
         case 'download':
@@ -64,18 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
     }
 }
-cleanOldTempFiles(86400);
+cleanOldTempFiles(86400);   // why not.
 
 
 function handleDirectoryListingRequest($config, $physicalPath, $requestUri) {
-
     $breadcrumbs = getBreadcrumbs();
 
     $sort = $_GET['sort'] ?? 'name';
     $order = $_GET['order'] ?? 'asc';
 
-
-    // 4. Get and Process File List
+    // Get and Process File List
     try {
         $fileList = getFileList($physicalPath, $config);
         $fileList = sortFileList($fileList, $sort, $order);
@@ -84,6 +76,6 @@ function handleDirectoryListingRequest($config, $physicalPath, $requestUri) {
     }
 
 
-    // render HTML
+    // Render HTML
     renderHTML($requestUri, $fileList, $config, $breadcrumbs, $sort, $order);
 }

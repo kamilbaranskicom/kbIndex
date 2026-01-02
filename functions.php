@@ -1,6 +1,33 @@
 <?php
 
 /**
+ * Loads configuration settings from default, site-specific, and Apache autoindex files.
+ * @param string $defaultConfig Path to the default configuration file.
+ * @param string $siteConfig Path to the site-specific configuration file (optional).
+ * @param string $autoindexConfig Path to the Apache autoindex.conf file (optional).
+ * @return array The merged configuration array.
+ */
+function loadConfigs(string $defaultConfig, string $siteConfig, string $autoindexConfig): array {
+    require_once $defaultConfig;
+    if (file_exists($siteConfig)) {
+        require_once $siteConfig;
+    }
+
+    // 1. defaults
+    $config = $configDefaults;
+
+    // 2. merge default config with apache mod autoindex.conf
+    if (file_exists($autoindexConfig)) {
+        $config = mergeConfigs($config, parseAutoindexConf($autoindexConfig));
+    }
+
+    // 3. overwrite values with config_site
+    $config = mergeConfigs($config, $configSite ?? []);
+    return $config;
+};
+
+
+/**
  * Merges system and local configurations with special handling for patterns and descriptions.
  * @param array $configA original configuration
  * @param array $configB newer configuration
