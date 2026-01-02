@@ -1,7 +1,7 @@
 <?php
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
 
 
 define('KB_INDEX_URI', '/kbIndex/'); // URL path to the tool folder
@@ -10,7 +10,11 @@ require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/download.php';
 
 
-$config = loadConfigs(__DIR__ . './config_defaults.php', __DIR__ . './config_site.php', '/etc/apache2/mods-available/autoindex.conf');
+$config = loadConfigs(
+    __DIR__ . DIRECTORY_SEPARATOR . 'config_defaults.php',
+    __DIR__ . DIRECTORY_SEPARATOR . 'config_site.php',
+    '/etc/apache2/mods-available/autoindex.conf'
+);
 
 // 1. Get the logical URI path (e.g., /files/a/)
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
