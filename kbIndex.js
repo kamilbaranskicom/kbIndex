@@ -140,53 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     startZipProgress(files);
   });
-
-  form.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-    cb.addEventListener("change", function () {
-      const checkedCheckboxes = form.querySelectorAll(
-        'input[name="selected[]"]:checked'
-      );
-      updateButtonVisibility();
-
-      if (checkedCheckboxes.length === 0) {
-        document.getElementById("selectedMessage").innerText = "";
-        return;
-      }
-
-      calculateTotalSizeOfSelectedItems(checkedCheckboxes);
-    });
-  });
 });
-
-function calculateTotalSizeOfSelectedItems(rows) {
-  let totalSize = 0;
-  let directoryCount = 0;
-  let fileCount = 0;
-  rows.forEach((checkedCb) => {
-    // Find the parent row (tr) of the checked checkbox
-    const row = checkedCb.closest("tr");
-    // Find the 'size' td within that row and get its data-value
-    const sizeTd = row.querySelector("td.size");
-    if (sizeTd && sizeTd.dataset.value)
-      totalSize += parseFloat(sizeTd.dataset.value);
-    if (row.dataset.isdir === "1") directoryCount++;
-    if (row.dataset.isdir === "0") fileCount++;
-  });
-  document.getElementById("selectedMessage").innerText = `Selected ${
-    rows.length
-  } items (directories: ${directoryCount}, files: ${fileCount}), total size: ${humanSize(
-    totalSize
-  )}.`;
-}
-
-function humanSize(bytes) {
-  if (bytes <= 0) return "-";
-
-  const units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-
-  return (bytes / Math.pow(1024, i)).toFixed(2) + " " + units[i];
-}
 
 /**
  * Initiates the download with a progress overlay.
@@ -293,7 +247,7 @@ function performSelection(targetCheckbox, isShift) {
     snapshot = checkboxes.map((cb) => cb.checked);
   }
 
-  updateButtonVisibility();
+  refreshUI();
 }
 
 if (tableBody) {
@@ -326,12 +280,12 @@ if (selectAllCheckbox) {
   selectAllCheckbox.addEventListener("change", function () {
     checkboxes.forEach((cb) => (cb.checked = this.checked));
     anchor = null; // Reset kotwicy po masowej akcji
-    updateButtonVisibility();
+    refreshUI();
   });
 }
 
 // Inicjalizacja
-updateButtonVisibility();
+refreshUI();
 
 // Obsługa kliknięcia w Delete:
 const btnDelete = document.querySelector("#deleteSelected");
@@ -377,4 +331,44 @@ if (btnDelete) {
         .catch((err) => console.error("Delete error:", err));
     }
   });
+}
+
+function refreshUI() {
+  updateButtonVisibility();
+  updateSelectedMessage();
+}
+
+function updateSelectedMessage() {
+  const rows = document.querySelectorAll('.file-table input[name="selected[]"]:checked');
+  if (rows.length === 0) {
+    document.getElementById("selectedMessage").innerText = "";
+    return;
+  }
+  let totalSize = 0;
+  let directoryCount = 0;
+  let fileCount = 0;
+  rows.forEach((checkedCb) => {
+    // Find the parent row (tr) of the checked checkbox
+    const row = checkedCb.closest("tr");
+    // Find the 'size' td within that row and get its data-value
+    const sizeTd = row.querySelector("td.size");
+    if (sizeTd && sizeTd.dataset.value)
+      totalSize += parseFloat(sizeTd.dataset.value);
+    if (row.dataset.isdir === "1") directoryCount++;
+    if (row.dataset.isdir === "0") fileCount++;
+  });
+  document.getElementById("selectedMessage").innerText = `Selected ${
+    rows.length
+  } items (directories: ${directoryCount}, files: ${fileCount}), total size: ${humanSize(
+    totalSize
+  )}.`;
+}
+
+function humanSize(bytes) {
+  if (bytes <= 0) return "-";
+
+  const units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+
+  return (bytes / Math.pow(1024, i)).toFixed(2) + " " + units[i];
 }
