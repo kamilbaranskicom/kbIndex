@@ -1,4 +1,11 @@
-test.wav    Lead vocal - Neuman U87
+test.wav    Lead vocal - Neumann U87
 test.mp3    Breakbeat from 1994 session
 test.txt    Session notes and gear list
-test.htm    the bestest webpage
+test.htm    some webpage
+1.txt       We do natural sort
+2.txt       which handles numbers better
+9.dat       example:
+10.txt      this file should be after 1-3.txt
+20.txt      and this also.
+files.bbs   This descript.ion (ftp/BBS style)
+2ndfolder   Welcome to kbIndex test folder!
