@@ -65,7 +65,6 @@ function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $c
         return $physicalPath . DIRECTORY_SEPARATOR . $filename;
     }, $files);
 
-
     // Validate total archive size before processing
     if ($totalWeight > $config['maxSizeLimit']) {
         die("Error: Selected payload (" . humanSize($totalWeight) . ") exceeds the " . humanSize($config['maxSizeLimit']) . " limit.");
@@ -75,7 +74,7 @@ function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $c
         die("Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . ".");
     }
     if (!empty($filesToZip)) {
-        streamZip($filesToZip, $name, $physicalPath, $totalWeight, isset($_GET['all']), $isAsyncRequest);
+        streamZip($filesToZip, $name, $physicalPath, $totalWeight, $allFiles, $isAsyncRequest);
     }
 }
 
@@ -109,6 +108,11 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
         chdir($parentPath);
         $zipTarget = escapeshellarg($targetFolderName);
     } else {
+        if (count($files) === 1) {
+            // we can change the name to the selected file/folder.
+            $safeBaseName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', basename($files[0]));
+            $finalFileName = "{$safeBaseName}_download_{$timestamp}.zip";           // we use this filename only for Content-Disposition
+        }
         // Standard behavior: zip only contents
         chdir($currentPath);
         $relativeFiles = array_map('escapeshellarg', array_map('basename', $files));
@@ -119,8 +123,11 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
     //    $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") > /dev/null 2>&1 &";
     $zipCmd = 'zip -1 -r - ' . $zipTarget . ' > ' . escapeshellarg($tmpZip);
     $touchCmd = 'touch ' . escapeshellarg($doneMarker);
+    $logFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'kbIndex.log.txt';
 
-    $cmd = '(' . $zipCmd . ' && ' . $touchCmd . ') >> /tmp/kbIndex.log.txt 2>&1';
+    logToFile("\n\n" . date('Ymd-His') . " Creating " . $finalFileName . " (" . $tmpZip . ") :\n", $logFile);
+
+    $cmd = '(' . $zipCmd . ' && ' . $touchCmd . ') >> ' . $logFile . ' 2>&1';
 
     // $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") >> /tmp/mojlog.txt 2>&1";
 
@@ -160,6 +167,18 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
 
     chdir($oldDir);
 }
+
+/**
+ * log to file
+ * * @param string $message Message to log
+ * @param string $logFile File to append the log to.
+ */
+function logToFile(string $message, string $logFile = '') {
+    if ($logFile == '') {
+        $logFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'kbIndex.log.txt';
+    }
+    file_put_contents($logFile, $message, FILE_APPEND);
+};
 
 
 /**
