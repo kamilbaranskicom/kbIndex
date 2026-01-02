@@ -120,7 +120,7 @@ a {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 footer {
@@ -230,4 +230,16 @@ th.desc {
   to {
     background-position: 0 0;
   }
+}
+
+.file-table {
+  /* Zapobiega zaznaczaniu tekstu podczas shift-click */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.file-table td a {
+  /* Ale pozwól na wybieranie tekstu w nazwach plików, jeśli ktoś chce skopiować nazwę */
+  user-select: text;
+  -webkit-user-select: text;
 }

@@ -223,64 +223,98 @@ function startZipProgress(files) {
   };
 }
 
-const checkboxes = Array.from(
-  document.querySelectorAll('input[name="selected[]"]')
-);
+
+// checkboxes and file selection
+
+const tableBody = document.querySelector(".file-table tbody");
 const selectAllCheckbox = document.getElementById("selectAll");
+const checkboxes = Array.from(document.querySelectorAll('input[name="selected[]"]'));
 
-// "Kotwica" to ostatni checkbox zaznaczony BEZ shiftu
 let anchor = null;
+let snapshot = []; // Stan wszystkich checkboxów z momentu wybrania kotwicy
 
-checkboxes.forEach((checkbox) => {
-  checkbox.addEventListener("click", function (e) {
-    if (e.shiftKey && anchor) {
-      const startInd = checkboxes.indexOf(anchor);
-      const endInd = checkboxes.indexOf(this);
+function updateButtonVisibility() {
+    const buttonAll = document.querySelector("#zipAll");
+    const buttonSelected = document.querySelector("#zipSelected");
+    if (!buttonAll || !buttonSelected) return;
 
-      const min = Math.min(startInd, endInd);
-      const max = Math.max(startInd, endInd);
+    const checkedCount = checkboxes.filter(cb => cb.checked).length;
+    const totalCount = checkboxes.length;
 
-      // Pobieramy stan elementu, który właśnie kliknęliśmy (true/false)
-      const newState = this.checked;
-
-      // Przechodzimy przez zakres
-      for (let i = min; i <= max; i++) {
-        // POMIJAMY kotwicę - jej stan ma zostać taki, jaki był w momencie
-        // gdy stała się kotwicą (czyli zazwyczaj zaznaczona)
-        if (checkboxes[i] !== anchor) {
-          checkboxes[i].checked = newState;
-        }
-      }
+    if (checkedCount === 0 || checkedCount === totalCount) {
+        buttonAll.classList.remove("hidden");
+        buttonSelected.classList.add("hidden");
     } else {
-      // Jeśli klikasz normalnie (bez shiftu), ten element zostaje nową kotwicą
-      anchor = this;
+        buttonAll.classList.add("hidden");
+        buttonSelected.classList.remove("hidden");
     }
-  });
-});
-
-// Obsługa "Zaznacz wszystko"
-selectAllCheckbox.addEventListener("change", function () {
-  checkboxes.forEach((cb) => {
-    cb.checked = this.checked;
-  });
-  // Po kliknięciu "Zaznacz wszystko" resetujemy kotwicę
-  anchor = null;
-});
-
-function showOnlyNeededButtons() {
-  const buttonDownloadAll = document.querySelector("#zipAll");
-  const buttonDownloadSelected = document.querySelector("#zipSelected");
-  if (
-    checkboxes.every((cb) => !cb.checked) ||
-    checkboxes.every((cb) => cb.checked)
-  ) {
-    console.log(checkboxes);
-    buttonDownloadAll.classList.remove("hidden");
-    buttonDownloadSelected.classList.add("hidden");
-  } else {
-    buttonDownloadAll.classList.add("hidden");
-    buttonDownloadSelected.classList.remove("hidden");
-  }
 }
 
-showOnlyNeededButtons();
+/**
+ * Logika zaznaczania - ujednolicona dla wiersza i checkboxa
+ */
+function performSelection(targetCheckbox, isShift) {
+    const targetIdx = checkboxes.indexOf(targetCheckbox);
+
+    if (isShift && anchor !== null) {
+        const anchorIdx = checkboxes.indexOf(anchor);
+        const min = Math.min(anchorIdx, targetIdx);
+        const max = Math.max(anchorIdx, targetIdx);
+
+        // Stan zakresu zależy od tego, jaki stan ma kotwica
+        const rangeState = anchor.checked;
+
+        checkboxes.forEach((cb, i) => {
+            if (i >= min && i <= max) {
+                // Elementy w aktualnym zakresie [kotwica <-> target]
+                cb.checked = rangeState;
+            } else {
+                // Elementy POZA zakresem wracają do stanu, który miały przed Shiftem
+                cb.checked = snapshot[i];
+            }
+        });
+    } else {
+        // Kliknięcie bez shiftu: ustawiamy nową kotwicę i zapamiętujemy stan wszystkiego
+        anchor = targetCheckbox;
+        snapshot = checkboxes.map(cb => cb.checked);
+    }
+
+    updateButtonVisibility();
+}
+
+if (tableBody) {
+    // 1. Nawigacja Double-click
+    tableBody.addEventListener("dblclick", (e) => {
+        const row = e.target.closest("tr");
+        const link = row?.querySelector("td a");
+        if (link) window.location.href = link.href;
+    });
+
+    // 2. Kliknięcie (Wiersz lub Checkbox)
+    tableBody.addEventListener("click", (e) => {
+        const row = e.target.closest("tr");
+        if (!row) return;
+
+        const checkbox = row.querySelector('input[name="selected[]"]');
+        if (!checkbox || e.target.tagName === "A" || e.target.closest("a")) return;
+
+        // Jeśli kliknięto w wiersz (a nie w sam checkbox), odwracamy stan checkboxa
+        if (e.target.type !== "checkbox") {
+            checkbox.checked = !checkbox.checked;
+        }
+
+        performSelection(checkbox, e.shiftKey);
+    });
+}
+
+// 3. Obsługa "Zaznacz wszystko"
+if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener("change", function() {
+        checkboxes.forEach(cb => cb.checked = this.checked);
+        anchor = null; // Reset kotwicy po masowej akcji
+        updateButtonVisibility();
+    });
+}
+
+// Inicjalizacja
+updateButtonVisibility();
