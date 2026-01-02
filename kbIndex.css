@@ -1,7 +1,7 @@
 html {
-  -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
-  -moz-box-sizing: border-box; /* Firefox, other Gecko */
-  box-sizing: border-box; /* Opera/IE 8+ */
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 *,
@@ -37,12 +37,10 @@ body::before {
 .file-table {
   min-width: 50%;
   border-collapse: collapse;
-  /* font-family: Arial, sans-serif; */
 }
 
-.file-table th,
-.file-table td {
-  /* border-bottom: 1px solid #ddd;*/
+.file-table td,
+.file-table th {
   padding: 6px 10px;
   text-align: left;
 }
@@ -63,8 +61,12 @@ body::before {
   background-color: #ffffff4a;
 }
 
+.breadcrumbs a,
 a {
   text-decoration: none;
+}
+
+a {
   border-bottom: calc(1em / 15) dotted;
 }
 
@@ -75,11 +77,11 @@ a {
 }
 
 .file-table td.checkbox {
-  padding: 0; /* Usuwamy padding z komórki, aby label dolegał do brzegów */
+  padding: 0;
 }
 
 .file-table th.checkbox {
-  padding: 0px 5px 0px 0px;
+  padding: 0 5px 0 0;
 }
 
 .file-table .checkbox label {
@@ -87,7 +89,7 @@ a {
   width: 100%;
   height: 100%;
   cursor: pointer;
-  padding: 9px 0px 9px 7px;
+  padding: 9px 0 9px 7px;
 }
 
 .file-table.checkbox label:hover {
@@ -104,12 +106,7 @@ a {
 }
 
 .breadcrumbs a {
-  text-decoration: none;
   color: #0073aa;
-}
-
-.breadcrumbs a:hover {
-  text-decoration: underline;
 }
 
 .download-buttons {
@@ -122,7 +119,7 @@ a {
   font-size: 14px;
 }
 
-.download-buttons .hidden {
+.hidden {
   display: none;
 }
 
@@ -146,8 +143,8 @@ TH[onclick] {
   cursor: pointer;
 }
 
-th.desc,
-th.asc {
+th.asc,
+th.desc {
   background-color: #d0d0d0;
 }
 
@@ -162,10 +159,6 @@ th.asc {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-}
-
-#status-box.hidden {
-  display: none;
 }
 
 #status-content {
@@ -201,37 +194,40 @@ th.asc {
   border-bottom-color: #d2e3fc;
 }
 
-
-
 .progress-container {
-    width: 100%;
-    height: 24px;
-    background-color: #eee;
-    border-radius: 12px;
-    overflow: hidden; /* Obcina paski do zaokrąglonych rogów */
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-    margin: 10px 0;
+  width: 100%;
+  height: 24px;
+  background-color: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 10px 0;
 }
 
 .progress-bar-fill {
-    height: 100%;
-    background-color: #2196F3;
-    background-image: linear-gradient(
-        45deg, 
-        rgba(255,255,255,.15) 25%, 
-        transparent 25%, 
-        transparent 50%, 
-        rgba(255,255,255,.15) 50%, 
-        rgba(255,255,255,.15) 75%, 
-        transparent 75%, 
-        transparent
-    );
-    background-size: 40px 40px;
-    transition: width 0.4s ease; /* Płynne przesuwanie się paska przy zmianie % */
-    animation: move-stripes 1s linear infinite; /* To wprawia paski w ruch */
+  height: 100%;
+  background-color: #2196f3;
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 40px 40px;
+  transition: width 0.4s ease;
+  animation: move-stripes 1s linear infinite;
 }
 
 @keyframes move-stripes {
-    from { background-position: 40px 0; }
-    to { background-position: 0 0; }
+  0% {
+    background-position: 40px 0;
+  }
+
+  to {
+    background-position: 0 0;
+  }
 }
