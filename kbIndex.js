@@ -111,15 +111,6 @@ function updateURLParameters(newParams) {
   return url.toString();
 }
 
-const selectAllCheckbox = document.getElementById("selectAll");
-// Pobieramy wszystkie checkboxy, które mają nazwę "selected[]"
-const checkboxes = document.querySelectorAll('input[name="selected[]"]');
-
-selectAllCheckbox.addEventListener("change", function () {
-  checkboxes.forEach((cb) => {
-    cb.checked = this.checked;
-  });
-});
 
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("kbIndexForm");
@@ -228,3 +219,62 @@ function startZipProgress(files) {
     console.error("Compression stream failed.");
   };
 }
+
+
+const selectAllCheckbox = document.getElementById("selectAll");
+const checkboxes = document.querySelectorAll('input[name="selected[]"]');
+
+// Zmienna do przechowywania ostatnio klikniętego checkboxa
+let lastChecked = null;
+
+checkboxes.forEach((checkbox, index) => {
+    checkbox.addEventListener('click', function(e) {
+        // Sprawdzamy, czy klawisz Shift był wciśnięty ORAZ czy to nie jest pierwsze kliknięcie
+        if (e.shiftKey && lastChecked) {
+            let start = false;
+            let end = false;
+
+            // Przechodzimy przez wszystkie checkboxy, aby znaleźć zakres "pomiędzy"
+            checkboxes.forEach(cb => {
+                // Jeśli trafimy na aktualnie kliknięty lub poprzednio kliknięty - przełączamy flagę zakresu
+                if (cb === this || cb === lastChecked) {
+                    start = !start;
+                    if (start) end = true; // Zaczęliśmy zaznaczanie
+                }
+
+                if (start || end) {
+                    cb.checked = this.checked; // Ustawiamy stan taki sam, jak tego klikniętego
+                    if (cb === this || cb === lastChecked) {
+                        if (!start) end = false; // Kończymy zaznaczanie
+                    }
+                }
+            });
+        }
+
+        // Zapisujemy ten checkbox jako ostatnio kliknięty dla następnej operacji
+        lastChecked = this;
+    });
+});
+
+// Twój istniejący kod dla "Zaznacz wszystko"
+selectAllCheckbox.addEventListener("change", function () {
+    checkboxes.forEach((cb) => {
+        cb.checked = this.checked;
+    });
+    // Opcjonalnie: resetujemy lastChecked przy "Zaznacz wszystko", 
+    // aby uniknąć dziwnych skoków po masowym zaznaczeniu
+    lastChecked = null; 
+});
+
+
+/*
+const selectAllCheckbox = document.getElementById("selectAll");
+// Pobieramy wszystkie checkboxy, które mają nazwę "selected[]"
+const checkboxes = document.querySelectorAll('input[name="selected[]"]');
+
+selectAllCheckbox.addEventListener("change", function () {
+  checkboxes.forEach((cb) => {
+    cb.checked = this.checked;
+  });
+});
+*/
