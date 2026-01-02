@@ -64,13 +64,22 @@ switch ($action) {
         break;
 }
 
+/**
+ * Handles the download of the generated ZIP file.
+ *
+ * Retrieves the temporary file name and final file name from the request,
+ * checks for file existence, and streams the file to the client.
+ */
 function handleDownloadAction() {
-    $tmpZip = $_GET('tempFileName') || die("No fileName given.");
-    $finalFileName = $_GET['finalFileName'] || 'download_'.date('Ymd-His').'.zip';
+    $tmpZip = $_GET['tempFileName'] ?? die("No fileName given.");
+    $finalFileName = $_GET['finalFileName'] ?? 'download_' . date('Ymd-His') . '.zip';
+
+    $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $tmpZip;
+    $finalFileName = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $finalFileName;
 
     // if ($returnCode === 0 && file_exists($tmpZip)) {
 
-    // TODO: check if not /etc/pa..wd etc.
+    // TODO IMPORTANT!: check if not /etc/pa..wd etc.
     if (file_exists($tmpZip)) {
         if (ob_get_level()) ob_end_clean();
 
@@ -86,6 +95,9 @@ function handleDownloadAction() {
     }
 }
 
+/**
+ * 
+ */
 function handleDirectoryListingRequest($config, $physicalPath, $requestUri) {
 
     $breadcrumbs = getBreadcrumbs();

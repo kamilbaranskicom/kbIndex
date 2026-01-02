@@ -52,6 +52,7 @@ function handleZipRequest(string $physicalPath, $files, array $config): void {
         return file_exists($physicalPath . DIRECTORY_SEPARATOR . $filename);
     });
     // THE $FILES LIST IS LEGIT. ALL THE FILES ARE ALLOWED TO ARCHIVE/DOWNLOAD.
+    // TODO: shall we check the subdirectories and use allowed files only? At the moment we allow for all the files (subdirectory/*)
 
     // get the sum of file sizes.
     $totalWeight = 0;
@@ -96,6 +97,9 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
     $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('kbindex_') . '.zip';
     $doneMarker = $tmpZip . '.done';
 
+    //debug($tmpZip);
+    //die();
+
     $oldDir = getcwd();
 
     // if ($preserveRoot) {
@@ -112,7 +116,8 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
     // }
 
     // -1: Fast, -r: Recursive
-    $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") > /dev/null 2>&1 &";
+    //    $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") > /dev/null 2>&1 &";
+    $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") >> /tmp/mojlog.txt 2>&1 &";
 
     exec($cmd, $output, $returnCode);
 
@@ -188,17 +193,19 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
     $startTime = time();
     $timeout = 300; // 5 minutes safety net
 
-
     while (true) {
         if (time() - $startTime > $timeout) break;
 
         $isDone = file_exists($marker);
         $currentSize = file_exists($tmpZip) ? filesize($tmpZip) : 0;
 
+        // debug([$tmpZip, $finalFileName, $marker, $stats, $isDone, $currentSize, file_exists($tmpZip), filesize($tmpZip)]);
+
+
         // Estimate progress based on file size.
         // We cap it at 99% until the marker file actually exists.
         $progress = ($stats['totalWeight'] > 0) ? ($currentSize / $stats['totalWeight']) * 100 : 0;
-        $progress = min($isDone ? 100 : 99, round($progress));
+        $progress = $isDone ? 100 : min(99, round($progress));
 
         // Inside your SSE loop (send this once at the start or with every update)
         echo "data: " . json_encode([
