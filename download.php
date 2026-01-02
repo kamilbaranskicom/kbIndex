@@ -92,10 +92,9 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
 
     $timestamp = date('Ymd-His');
     $safeBaseName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $baseName);
-    $finalFileName = "{$safeBaseName}_download_{$timestamp}.zip";
-    $doneMarker = $finalFileName . '.done';
-
+    $finalFileName = "{$safeBaseName}_download_{$timestamp}.zip";           // we use this filename only for Content-Disposition
     $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('kbindex_') . '.zip';
+    $doneMarker = $tmpZip . '.done';
 
     $oldDir = getcwd();
 
@@ -106,10 +105,10 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
     //     chdir($parentPath);
     //     $zipTarget = escapeshellarg($targetFolderName);
     // } else {
-        // Standard behavior: zip only contents
-        chdir($currentPath);
-        $relativeFiles = array_map('escapeshellarg', array_map('basename', $files));
-        $zipTarget = implode(' ', $relativeFiles);
+    // Standard behavior: zip only contents
+    chdir($currentPath);
+    $relativeFiles = array_map('escapeshellarg', array_map('basename', $files));
+    $zipTarget = implode(' ', $relativeFiles);
     // }
 
     // -1: Fast, -r: Recursive
@@ -210,7 +209,7 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
                 'totalFolders' => $stats['dirs'],
                 'totalFiles' => $stats['files']
             ],
-            'downloadUrl' => $isDone ? "?action=download&file=" . basename($finalFileName) : null
+            'downloadUrl' => $isDone ? '?action=download&tempFileName=' . basename($tmpZip) . '&finalFileName=' . basename($finalFileName) : null
         ]) . "\n\n";
 
         flush();

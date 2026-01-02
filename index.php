@@ -59,15 +59,18 @@ switch ($action) {
 
     case 'list':
     default:
-        // PHASE 0: Standard directory listing (your current code)
+        // PHASE 0: Standard directory listing
         handleDirectoryListingRequest($config, $physicalPath, $requestUri);
         break;
 }
 
 function handleDownloadAction() {
-    $tmpZip = $_GET('fileName') || die("No fileName given.");
-    $finalFileName = $_GET['finalFileName'] || 'download.zip';
+    $tmpZip = $_GET('tempFileName') || die("No fileName given.");
+    $finalFileName = $_GET['finalFileName'] || 'download_'.date('Ymd-His').'.zip';
+
     // if ($returnCode === 0 && file_exists($tmpZip)) {
+
+    // TODO: check if not /etc/pa..wd etc.
     if (file_exists($tmpZip)) {
         if (ob_get_level()) ob_end_clean();
 
@@ -78,7 +81,7 @@ function handleDownloadAction() {
         header('Pragma: no-cache');
 
         readfile($tmpZip);
-        if (file_exists($tmpZip)) unlink($tmpZip);
+        // if (file_exists($tmpZip)) unlink($tmpZip);   // commented for testing.
         exit;
     }
 }

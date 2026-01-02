@@ -173,7 +173,7 @@ function startZipProgress(files) {
     const data = JSON.parse(event.data);
 
     // Update your UI element
-    if (data.type === "progress") {
+    if (data.status === "progress") {
       progressBar.value = data.progress;
       statusMessage.innerText = `Preparing archive: ${data.file} (${data.percent}%)`;
     }
