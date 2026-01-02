@@ -29,13 +29,13 @@ function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $c
         $files = $allowedFiles;
     }
 
-    // - sanitize to prevent path traversal
+    // - sanitize to prevent path traversal (just in case of a refactor, 'cause it is done also on $_GET['files'] in index.php)
     $files = array_map('basename', $files);
 
     // convert $allowedFiles to $map helper array:
-    //      $map['file.txt'] = 40 (bytes),
-    //      $map['file.mp3'] = 6 543 210 (bytes),
-    //      $map['not-allowed-file.git'] = -1 (status: not allowed)
+    //      $map['file.txt'] = 40               // (bytes),
+    //      $map['file.mp3'] = 6 543 210        // (bytes),
+    //      $map['not-allowed-file.git'] = -1   // (status: not allowed)
     //      etc.
     $map = [];
     foreach ($allowedFiles as $allowedFile) {
