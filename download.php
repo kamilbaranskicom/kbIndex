@@ -7,7 +7,7 @@
  * @param array $config Configuration array including ignore patterns.
  * @return void
  */
-function handleZipRequest(string $physicalPath, $files, array $config): void {
+function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $config, bool $isAsyncRequest): void {
     // debug($physicalPath);
 
     // Maintenance: Remove temporary archives older than 24 hours
@@ -25,7 +25,7 @@ function handleZipRequest(string $physicalPath, $files, array $config): void {
     $allowedFiles = getFileList($physicalPath, $config);
 
     // (if user needs all the files, this is the same list as $allowedFiles.)
-    if (isset($_GET['all'])) {
+    if ($allFiles) {
         $files = $allowedFiles;
     }
 
@@ -75,7 +75,7 @@ function handleZipRequest(string $physicalPath, $files, array $config): void {
         die("Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . ".");
     }
     if (!empty($filesToZip)) {
-        streamZip($filesToZip, $name, $physicalPath, $totalWeight, isset($_GET['all']));
+        streamZip($filesToZip, $name, $physicalPath, $totalWeight, isset($_GET['all']), $isAsyncRequest);
     }
 }
 
@@ -88,7 +88,7 @@ function handleZipRequest(string $physicalPath, $files, array $config): void {
  * @param bool $preserveRoot Whether to include the current directory name in the archive structure.
  * @return void
  */
-function streamZip(array $files, string $baseName, string $currentPath, $totalWeight, bool $preserveRoot = false): void {
+function streamZip(array $files, string $baseName, string $currentPath, $totalWeight, bool $preserveRoot = false, bool $isAsyncRequest = false): void {
     set_time_limit(900);
 
     $timestamp = date('Ymd-His');
@@ -102,22 +102,31 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
 
     $oldDir = getcwd();
 
-    // if ($preserveRoot) {
-    //     // Go one level up to include the current folder name in the ZIP
-    //     $parentPath = dirname($currentPath);
-    //     $targetFolderName = basename($currentPath);
-    //     chdir($parentPath);
-    //     $zipTarget = escapeshellarg($targetFolderName);
-    // } else {
-    // Standard behavior: zip only contents
-    chdir($currentPath);
-    $relativeFiles = array_map('escapeshellarg', array_map('basename', $files));
-    $zipTarget = implode(' ', $relativeFiles);
-    // }
+    if ($preserveRoot) {
+        // Go one level up to include the current folder name in the ZIP
+        $parentPath = dirname($currentPath);
+        $targetFolderName = basename($currentPath);
+        chdir($parentPath);
+        $zipTarget = escapeshellarg($targetFolderName);
+    } else {
+        // Standard behavior: zip only contents
+        chdir($currentPath);
+        $relativeFiles = array_map('escapeshellarg', array_map('basename', $files));
+        $zipTarget = implode(' ', $relativeFiles);
+    }
 
     // -1: Fast, -r: Recursive
     //    $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") > /dev/null 2>&1 &";
-    $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") >> /tmp/mojlog.txt 2>&1 &";
+    $zipCmd = 'zip -1 -r - ' . $zipTarget . ' > ' . escapeshellarg($tmpZip);
+    $touchCmd = 'touch ' . escapeshellarg($doneMarker);
+
+    $cmd = '(' . $zipCmd . ' && ' . $touchCmd . ') >> /tmp/kbIndex.log.txt 2>&1';
+
+    // $cmd = "(zip -1 -r " . escapeshellarg($tmpZip) . " " . $zipTarget . " && touch " . escapeshellarg($doneMarker) . ") >> /tmp/mojlog.txt 2>&1";
+
+    if ($isAsyncRequest) {
+        $cmd .= ' &'; // send to background
+    }
 
     exec($cmd, $output, $returnCode);
 
@@ -129,30 +138,27 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
     $stats['totalWeight'] = $totalWeight;
 
     // Now, instead of exit, we enter the SSE loop (if requested via AJAX)
-    // if ($isAsyncRequest) {
-    sendProgressStream($tmpZip, $finalFileName, $doneMarker, $stats);
-    // }
+    if ($isAsyncRequest) {
+        sendProgressStream($tmpZip, $finalFileName, $doneMarker, $stats);
+    } else {
+        if ($returnCode === 0 && file_exists($tmpZip)) {
+            if (ob_get_level()) ob_end_clean();
+
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="' . $finalFileName . '"');
+            header('Content-Length: ' . filesize($tmpZip));
+            header('Cache-Control: no-cache, must-revalidate');
+            header('Pragma: no-cache');
+
+            readfile($tmpZip);
+            if (file_exists($tmpZip)) unlink($tmpZip);
+            exit;
+        }
+        if (file_exists($tmpZip)) unlink($tmpZip);
+        throw new Exception("ZIP Error: " . implode("\n", $output));
+    }
 
     chdir($oldDir);
-
-
-    /*
-    if ($returnCode === 0 && file_exists($tmpZip)) {
-        if (ob_get_level()) ob_end_clean();
-
-        header('Content-Type: application/zip');
-        header('Content-Disposition: attachment; filename="' . $finalFileName . '"');
-        header('Content-Length: ' . filesize($tmpZip));
-        header('Cache-Control: no-cache, must-revalidate');
-        header('Pragma: no-cache');
-
-        readfile($tmpZip);
-        if (file_exists($tmpZip)) unlink($tmpZip);
-        exit;
-    }
-    if (file_exists($tmpZip)) unlink($tmpZip);
-    throw new Exception("ZIP Error: " . implode("\n", $output));
-    */
 }
 
 
@@ -163,9 +169,19 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
  */
 function cleanOldTempFiles(int $seconds = 86400): void {
     $tmpDir = sys_get_temp_dir();
-    $files = glob($tmpDir . DIRECTORY_SEPARATOR . 'kbindex_*.zip');
-    $now = time();
+    unlinkFilesOlderThan($seconds, $tmpDir . DIRECTORY_SEPARATOR . 'kbindex_*.zip');
+    unlinkFilesOlderThan($seconds, $tmpDir . DIRECTORY_SEPARATOR . 'kbindex_*.zip.done');
+}
 
+/**
+ * Actually remove the files
+ * * @param int $seconds Minimum age of files to be removed in seconds. (86400 = 24 hours.)
+ * * @param string $mask Path and mask (eg: '/tmp/kbindex_*.zip')
+ * @return void
+ */
+function unlinkFilesOlderThan(int $seconds, string $mask) {
+    $files = glob($mask);
+    $now = time();
     foreach ($files as $file) {
         if (is_file($file) && ($now - filemtime($file) > $seconds)) {
             unlink($file);
@@ -196,6 +212,7 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
     while (true) {
         if (time() - $startTime > $timeout) break;
 
+        clearstatcache(true, $tmpZip);
         $isDone = file_exists($marker);
         $currentSize = file_exists($tmpZip) ? filesize($tmpZip) : 0;
 
@@ -227,5 +244,53 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
         }
 
         usleep(300000); // 300ms heartbeat
+    }
+}
+
+
+/**
+ * Handles the download of the generated ZIP file.
+ *
+ * Retrieves the temporary file name and final file name from the request,
+ * checks for file existence, and streams the file to the client.
+ */
+function handleDownloadAction() {
+    $tmpZip = basename($_GET['tempFileName']) ?? die("No fileName given.");
+    $finalFileName = basename($_GET['finalFileName']) ?? 'download_' . date('Ymd-His') . '.zip';
+
+    $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $tmpZip;
+    $finalFileName = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $finalFileName;
+
+    // if ($returnCode === 0 && file_exists($tmpZip)) {
+
+    // TODO IMPORTANT!: check if not /etc/pa..wd etc.
+    if (file_exists($tmpZip)) {
+        if (ob_get_level()) ob_end_clean();
+
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $finalFileName . '"');
+        header('Content-Length: ' . filesize($tmpZip));
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Pragma: no-cache');
+
+        readfile($tmpZip);
+        if (file_exists($tmpZip)) unlink($tmpZip);
+        exit;
+    }
+}
+
+
+function handlePostRequest(string $physicalPath, array $config): void {
+    if (isset($_POST['zip_all'])) {
+        // User clicked "Download all"
+        handleZipRequest($physicalPath, [], true, $config, false);
+    } elseif (isset($_POST['zip_selected'])) {
+        // User clicked "Download selected"
+        $selectedFiles = $_POST['selected'] ?? [];
+        if (empty($selectedFiles)) {
+            echo "data: " . json_encode(['type' => 'error', 'message' => 'Nie wybrano żadnych plików do pobrania.']) . "\n\n";
+            exit;
+        }
+        handleZipRequest($physicalPath, $selectedFiles, false, $config, false);
     }
 }

@@ -181,7 +181,7 @@ function startZipProgress(files) {
       eventSource.close();
       // Trigger the actual file download now that it's ready
       window.location.href = `${data.downloadUrl}`;
-      setTimeout(() => statusBox.classList.add("hidden"), 3000);
+      setTimeout(() => statusBox.classList.add("hidden"), 1000);
     }
   };
 

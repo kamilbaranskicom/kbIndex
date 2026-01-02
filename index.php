@@ -38,66 +38,35 @@ if (!is_dir($physicalPath)) {
     die("404 not found.");  // was: directory not found
 }
 
-$action = $_GET['action'] ?? 'list';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // for clients without JS
+    handlePostRequest($physicalPath, $config);
+    exit;
+} else {
 
-switch ($action) {
-    case 'zip':
-        // PHASE 1: Calculate weight and start SSE stream
-        handleZipRequest($physicalPath, json_decode($_GET['files'], true), $config);
-        // (TODO: we shall check if the client sent POST for clients without JS)
-        // // Handle download requests before any HTML is sent
-        // if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        //    handleZipRequest($physicalPath, $config);
-        // }
+    $action = $_GET['action'] ?? 'list';
 
-        break;
+    switch ($action) {
+        case 'zip':
+            // PHASE 1: Calculate weight and start SSE stream
+            handleZipRequest($physicalPath, json_decode($_GET['files'], true), isset($_GET['all']), $config, true);
+            break;
 
-    case 'download':
-        // PHASE 2: Serve the actual binary file
-        handleDownloadAction();
-        break;
+        case 'download':
+            // PHASE 2: Serve the actual binary .zip file
+            handleDownloadAction();
+            break;
 
-    case 'list':
-    default:
-        // PHASE 0: Standard directory listing
-        handleDirectoryListingRequest($config, $physicalPath, $requestUri);
-        break;
-}
-
-/**
- * Handles the download of the generated ZIP file.
- *
- * Retrieves the temporary file name and final file name from the request,
- * checks for file existence, and streams the file to the client.
- */
-function handleDownloadAction() {
-    $tmpZip = $_GET['tempFileName'] ?? die("No fileName given.");
-    $finalFileName = $_GET['finalFileName'] ?? 'download_' . date('Ymd-His') . '.zip';
-
-    $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $tmpZip;
-    $finalFileName = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $finalFileName;
-
-    // if ($returnCode === 0 && file_exists($tmpZip)) {
-
-    // TODO IMPORTANT!: check if not /etc/pa..wd etc.
-    if (file_exists($tmpZip)) {
-        if (ob_get_level()) ob_end_clean();
-
-        header('Content-Type: application/zip');
-        header('Content-Disposition: attachment; filename="' . $finalFileName . '"');
-        header('Content-Length: ' . filesize($tmpZip));
-        header('Cache-Control: no-cache, must-revalidate');
-        header('Pragma: no-cache');
-
-        readfile($tmpZip);
-        // if (file_exists($tmpZip)) unlink($tmpZip);   // commented for testing.
-        exit;
+        case 'list':
+        default:
+            // PHASE 0: Standard directory listing
+            handleDirectoryListingRequest($config, $physicalPath, $requestUri);
+            break;
     }
 }
+cleanOldTempFiles(86400);
 
-/**
- * 
- */
+
 function handleDirectoryListingRequest($config, $physicalPath, $requestUri) {
 
     $breadcrumbs = getBreadcrumbs();
