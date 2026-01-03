@@ -7,7 +7,7 @@ $config = array_merge($config, [
     'maxDiskSpaceLimit' => 1 * 1024 * 1024 * 1024, // 1 GB
     //    'displayNewestItem' => true,
     //    'logFile'        => __DIR__ . '/kbIndex.activity.log',
-    'footerUser'      => '<a href="https://yourcompany.net/">Your Company</a>',
+    'footerUser'      => '{📂} <a href="https://yourcompany.net/">Your Company</a>',
     //    'descriptions'    => ['.broken' => 'Broken symbolic link'],
     //    'ignorePatterns'  => [    // Beware! The ignorePatterns doesn't work when downloading a subdirectory! (whole subdirectory is going to be compressed)
     //        '.',
