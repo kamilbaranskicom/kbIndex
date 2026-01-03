@@ -21,7 +21,7 @@ BODY {
 
 body::before {
   transform: rotate(-20deg);
-  background-image: url(kbIndex130.png);
+  background-image: url(kbIndex.svg);
   background-size: 130px;
   width: 300%;
   height: 300%;
