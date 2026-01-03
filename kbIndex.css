@@ -120,7 +120,7 @@ a {
 }
 
 .btn-danger {
-  background-color: #FF8080;
+  background-color: #ff8080;
 }
 
 .hidden {
@@ -246,4 +246,115 @@ th.desc {
   /* Ale pozwól na wybieranie tekstu w nazwach plików, jeśli ktoś chce skopiować nazwę */
   user-select: text;
   -webkit-user-select: text;
+}
+
+/* --- DARK MODE --- */
+@media (prefers-color-scheme: dark) {
+  /* To polecenie mówi przeglądarce, by użyła ciemnych wersji systemowych kontrolek */
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: #121212;
+    color: #e0e0e0;
+  }
+
+  /* Watermark - logotyp w tle (zmniejszamy widoczność) */
+  body::before {
+    opacity: 5%;
+    filter: invert(1); /* Jeśli logo jest czarne, to je odwróci na białe */
+  }
+
+  /* Tabela plików */
+  .file-table tr {
+    border-bottom: 1px solid #333;
+  }
+
+  .file-table th {
+    background-color: #1e1e1e;
+    color: #ffffff;
+  }
+
+  .file-table tr:nth-child(even) {
+    background-color: #1a1a1a;
+  }
+
+  .file-table tr:nth-child(odd) {
+    background-color: #121212;
+  }
+
+  /* Linki i Breadcrumbs */
+  a,
+  .breadcrumbs a {
+    color: #64b5f6;
+    border-bottom-color: rgba(100, 181, 246, 0.4);
+  }
+
+  /* Kolory dla poszczególnych kolumn */
+  TH[onclick] {
+    color: #90caf9;
+  }
+
+  th.asc,
+  th.desc {
+    background-color: #333;
+  }
+
+  /* Stan zaznaczenia (Selection) */
+  .file-table tbody tr:has(input[name="selected[]"]:checked) {
+    background-color: #2c3e50 !important; /* Ciemny błękit/granat dla zaznaczenia */
+  }
+
+  .file-table tbody tr:has(input[name="selected[]"]:checked) td {
+    color: #ffffff;
+    border-bottom-color: #3e5871;
+  }
+
+  input[type="checkbox"] {
+    /* Kolor "haczyka" i tła po zaznaczeniu */
+    accent-color: #64b5f6;
+    /* Niektóre przeglądarki potrzebują tego dla pełnego efektu */
+    cursor: pointer;
+  }
+  /* Hover na checkboxach */
+  .file-table .checkbox label:hover {
+    background-color: #333;
+  }
+
+  /* Przyciski */
+  .download-buttons button {
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #444;
+  }
+
+  .btn-danger {
+    background-color: #8c3333 !important;
+    border-color: #a04040 !important;
+  }
+
+  /* Overlay statusu (ZIP progress) */
+  #status-box {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+
+  #status-content {
+    background-color: #252525;
+    color: #fff;
+    border: 1px solid #444;
+  }
+
+  .progress-container {
+    background-color: #333;
+  }
+
+  #status-details {
+    color: #aaa;
+  }
+
+  /* Stopka */
+  footer {
+    border-top: 1px solid #333;
+  }
 }
