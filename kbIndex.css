@@ -76,6 +76,11 @@ a {
   padding: 6px 5px;
 }
 
+.file-table .icon img {
+  width:20px;
+  height:22px;
+}
+
 .file-table td.checkbox {
   padding: 0;
 }
