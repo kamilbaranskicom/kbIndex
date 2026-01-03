@@ -1,0 +1,5 @@
+body::before {
+  background-image: url(/img/lukowastudio-logo.svg);
+  opacity: 10%;
+  background-size: 130px;
+}

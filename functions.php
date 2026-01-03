@@ -655,6 +655,8 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
         <title>Index of <?php echo htmlspecialchars($path);
                         echo htmlspecialchars($config['titleSuffix']); ?></title>
         <link rel="stylesheet" href="<?= KB_INDEX_URI; ?>kbIndex.css">
+        <?php if (file_exists('kbIndex_site.css')) { ?>
+            <link rel="stylesheet" href="<?= KB_INDEX_URI; ?>kbIndex_site.css"><?php }; ?>
         <script src="<?= KB_INDEX_URI; ?>kbIndex.js" defer></script>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

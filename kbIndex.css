@@ -21,14 +21,14 @@ BODY {
 
 body::before {
   transform: rotate(-20deg);
-  background-image: url(/img/lukowastudio-logo.svg);
+  background-image: url(kbIndex130.png);
   background-size: 130px;
   width: 300%;
   height: 300%;
   position: fixed;
   top: -50%;
   left: -50%;
-  opacity: 10%;
+  opacity: 5%;
   content: "";
   z-index: -1;
   background-repeat: repeat;
@@ -260,9 +260,8 @@ th.desc {
     color: #e0e0e0;
   }
 
-  /* Watermark - logotyp w tle (zmniejszamy widoczność) */
+  /* Watermark - logotyp w tle */
   body::before {
-    opacity: 5%;
     filter: invert(1); /* Jeśli logo jest czarne, to je odwróci na białe */
   }
 
