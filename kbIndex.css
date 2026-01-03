@@ -277,11 +277,11 @@ th.desc {
   }
 
   .file-table tr:nth-child(even) {
-    background-color: #1a1a1a;
+    background-color: #1a1a1aaa;
   }
 
   .file-table tr:nth-child(odd) {
-    background-color: #121212;
+    background-color: #121212aa;
   }
 
   /* Linki i Breadcrumbs */
