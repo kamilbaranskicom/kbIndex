@@ -13,7 +13,7 @@ require_once __DIR__ . '/download.php';
 $config = loadConfigs(
     __DIR__ . DIRECTORY_SEPARATOR . 'config_defaults.php',
     __DIR__ . DIRECTORY_SEPARATOR . 'config_site.php',
-    '/etc/apache2/mods-available/autoindex.conf'
+    getAutoindexConfigPath()
 );
 
 // 1. Get the logical URI path (e.g., /files/a/)
@@ -95,7 +95,7 @@ function handleDirectoryListingRequest($config, $physicalPath, $requestUri) {
         die("Error: " . $e->getMessage());
     }
 
-
+    header('Content-Type: text/html; charset=utf-8');
     // Render HTML
     renderHTML($requestUri, $fileList, $config, $breadcrumbs, $sort, $order);
 }

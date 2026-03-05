@@ -55,6 +55,50 @@ function mergeConfigs(array $configA, array $configB): array {
 }
 
 /**
+ * Resolves the path to autoindex.conf safely.
+ * Checks for system-wide Apache config but falls back to local copy 
+ * to avoid open_basedir restrictions.
+ *
+ * @return string The path to the accessible configuration file.
+ */
+function getAutoindexConfigPath(): string {
+    $systemPath = '/etc/apache2/mods-available/autoindex.conf';
+    $localFallback = __DIR__ . '/defaults/autoindex.conf';
+
+    // 1. Check if open_basedir allows access to the system path
+    // We use @ to suppress warnings in case the check itself triggers restriction logic
+    if (isSystemPathAccessible($systemPath) && @file_exists($systemPath)) {
+        return $systemPath;
+    }
+
+    // 2. Default to local copy bundled with kbIndex
+    return $localFallback;
+}
+
+/**
+ * Checks if a path is within the allowed open_basedir paths.
+ *
+ * @param string $path
+ * @return bool
+ */
+function isSystemPathAccessible(string $path): bool {
+    $openBasedir = ini_get('open_basedir');
+    if (!$openBasedir) {
+        return true; // No restriction in effect
+    }
+
+    $allowedPaths = explode(PATH_SEPARATOR, $openBasedir);
+    foreach ($allowedPaths as $allowed) {
+        // Simple check: does the path start with one of the allowed directories?
+        if (strpos($path, $allowed) === 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * Parses Apache autoindex.conf to extract configuration rules.
  * * @param string $filePath Path to the .conf file
  * @return array Parsed configuration
@@ -265,10 +309,10 @@ function getBreadcrumbsHtml(array $breadcrumbs): string {
             $html .= '<span class="separator"> / </span>';
         }
         if ($i === $lastIndex) {
-            $html .= '<span class="crumb-current">' . htmlspecialchars($crumb['name']) . '</span>';
+            $html .= '<span class="crumb-current">' . safeHtml($crumb['name']) . '</span>';
         } else {
-            $html .= '<a class="crumb-link" href="' . htmlspecialchars($crumb['url']) . '"';
-            $html .= ' title="Go to ' . htmlspecialchars($crumb['name']) . '">' . htmlspecialchars($crumb['name']) . '</a>';
+            $html .= '<a class="crumb-link" href="' . safeHtml($crumb['url']) . '"';
+            $html .= ' title="Go to ' . safeHtml($crumb['name']) . '">' . safeHtml($crumb['name']) . '</a>';
         }
     }
     $html .= '</nav>';
@@ -350,10 +394,17 @@ function resolveIcon(SplFileInfo $file, array $config, FileInfoAnalyzer $analyze
  * Helper class to analyze file info (MIME type, encoding)
  */
 class FileInfoAnalyzer {
-    private finfo $mimeTypeDetector;
-    private finfo $encodingDetector;
+    /** @var finfo */
+    private $mimeTypeDetector;
+    
+    /** @var finfo */
+    private $encodingDetector;
 
     public function __construct() {
+        // Ensure the fileinfo extension is loaded
+        if (!class_exists('finfo')) {
+            throw new RuntimeException('PHP Extension fileinfo is required.');
+        }
         $this->mimeTypeDetector = new finfo(FILEINFO_MIME_TYPE);
         $this->encodingDetector = new finfo(FILEINFO_MIME_ENCODING);
     }
@@ -370,11 +421,14 @@ class FileInfoAnalyzer {
         if (!$encoding || $encoding === 'binary') return null;
 
         // Map standard encodings to Apache's expected x- prefix
-        return match ($encoding) {
-            'gzip'     => 'x-gzip',
-            'compress' => 'x-compress',
-            default    => $encoding,
-        };
+        switch ($encoding) {
+            case 'gzip':
+                return 'x-gzip';
+            case 'compress':
+                return 'x-compress';
+            default:
+                return $encoding;
+        }
     }
 }
 
@@ -622,15 +676,15 @@ function renderTableRows($fileList): string {
     $html = '';
     foreach ($fileList as $file) {
         $html .= '<tr data-isdir="' . ($file['is_dir'] ? 1 : 0) . '">' . "\n";
-        $html .= ' <td class="checkbox"><label><input type="checkbox" name="selected[]" value="' . htmlspecialchars($file['name']) . '"></label></td>' . "\n";
+        $html .= ' <td class="checkbox"><label><input type="checkbox" name="selected[]" value="' . safeHtml($file['name']) . '"></label></td>' . "\n";
         $html .= ' <td class="icon"><img src="' . $file['icon'] . '" alt=""></td>' . "\n";
-        $html .= ' <td><a href="' . rawurlencode($file['name']) . ($file['is_dir'] ? '/' : '') . '">' . htmlspecialchars($file['name']) . '</a></td>' . "\n";
+        $html .= ' <td><a href="' . rawurlencode($file['name']) . ($file['is_dir'] ? '/' : '') . '">' . safeHtml($file['name']) . '</a></td>' . "\n";
         $html .= ' <td data-value="' . (isset(pathinfo($file['name'])['extension']) ? pathinfo($file['name'])['extension'] : '') . '"></td>' . "\n";
         // [old]
         // $html .= ' <td data-value="' . $file['size'] . '" class="size" title="' . $file['size'] . ' bytes">' . ($file['is_dir'] ? '-' : humanSize($file['size'])) . '</td>' . "\n";
         $html .= ' <td data-value="' . $file['size'] . '" class="size" title="' . $file['size'] . ' bytes">' . humanSize($file['size']) . '</td>' . "\n";
         $html .= ' <td data-value="' . $file['mtime'] . '">' . date("Y-m-d H:i", $file['mtime']) . '</td>' . "\n";
-        $html .= ' <td>' . htmlspecialchars($file['description']) . '</td>' . "\n";
+        $html .= ' <td>' . safeHtml($file['description']) . '</td>' . "\n";
         $html .= '</tr>' . "\n\n";
     }
     return $html;
@@ -652,8 +706,8 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
 
     <head>
         <meta charset="utf-8">
-        <title>Index of <?php echo htmlspecialchars($path);
-                        echo htmlspecialchars($config['titleSuffix']); ?></title>
+        <title>Index of <?php echo safeHtml($path);
+                        echo safeHtml($config['titleSuffix']); ?></title>
         <link rel="stylesheet" href="<?= KB_INDEX_URI; ?>kbIndex.css">
         <?php if (file_exists('kbIndex_site.css')) { ?>
             <link rel="stylesheet" href="<?= KB_INDEX_URI; ?>kbIndex_site.css"><?php }; ?>
@@ -945,4 +999,56 @@ function logActivity($message, $config) {
 
     // Używamy FILE_APPEND, żeby nie nadpisywać pliku
     file_put_contents($config['logFile'] ?? __DIR__ . '/activity.log', $logEntry, FILE_APPEND);
+}
+
+/**
+ * Polyfills for PHP 8.0 functions to ensure compatibility with PHP 7.x.
+ * These functions are only defined if they don't already exist.
+ */
+
+if (!function_exists('str_starts_with')) {
+    function str_starts_with(string $haystack, string $needle): bool {
+        return $haystack !== '' && strpos($haystack, $needle) === 0;
+    }
+}
+
+if (!function_exists('str_ends_with')) {
+    function str_ends_with(string $haystack, string $needle): bool {
+        return $needle !== '' && substr($haystack, -strlen($needle)) === $needle;
+    }
+}
+
+if (!function_exists('str_contains')) {
+    function str_contains(string $haystack, string $needle): bool {
+        return $needle !== '' && strpos($haystack, $needle) !== false;
+    }
+}
+
+/**
+ * Safely escapes HTML strings, handling unsupported charsets.
+ * Converts input to UTF-8 if necessary to prevent htmlspecialchars warnings.
+ *
+ * @param string|null $string The string to escape.
+ * @param string $encoding The source encoding (default: UTF-8).
+ * @return string Escaped HTML string.
+ */
+function safeHtml(?string $string, string $encoding = 'UTF-8'): string {
+    if ($string === null || $string === '') {
+        return '';
+    }
+
+    // Normalizing charset names for PHP compatibility
+    $normalizedEncoding = strtoupper($encoding);
+    $supportedByHtmlSpecialChars = ['UTF-8', 'ISO-8859-1', 'ISO-8859-15', 'cp1252', 'BIG5', 'GB2312'];
+
+    // If encoding is not supported or is windows-1250, convert to UTF-8 first
+    if (!in_array($normalizedEncoding, $supportedByHtmlSpecialChars) || $normalizedEncoding === 'WINDOWS-1250') {
+        if (function_exists('mb_convert_encoding')) {
+            // mb_convert_encoding is robust for windows-1250 to UTF-8
+            $string = @mb_convert_encoding($string, 'UTF-8', $encoding);
+        }
+        $normalizedEncoding = 'UTF-8';
+    }
+
+    return htmlspecialchars($string, ENT_QUOTES | ENT_SUBSTITUTE, $normalizedEncoding);
 }
