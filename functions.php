@@ -729,6 +729,9 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
                 <?php if (isActionAllowed('allowDelete', $path, $config)) { ?>
                     <button type="button" name="action" value="delete" id="deleteSelected" class="hidden btn-danger">🗑️ Delete selected</button>
                 <?php }; ?>
+                <?php if ($config['displayFilter']) { ?>
+                <input type="text" name="filter" value="" id="filter" placeholder="🔍 filter ">
+                <?php }; ?>
                 <span id="selectedMessage"></span>
             </p>
 
@@ -775,6 +778,7 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
                 echo 'Total ' . count($fileList) . ' items ';
                 echo '(directories: ' . $dirCount . ', ';
                 echo 'files: ' . $fileCount . '), ';
+                echo '<span id="showingMessage"></span> ';
                 echo 'size: ' . humanSize(array_sum(array_column($fileList, 'size'))) . '. ';
                 if ($config['displayNewestItem']) {
                     $newest = array_reduce($fileList, function ($carry, $item) {

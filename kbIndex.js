@@ -86,7 +86,7 @@ function sortTable(columnName) {
     updateURLParameters({
       sort: columnName,
       order: direction === "desc" ? "desc" : "asc",
-    })
+    }),
   );
 }
 
@@ -123,14 +123,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (submitter.id === "zipAll") {
       // Pobierz wszystkie pliki z tabeli
-      files = Array.from(form.querySelectorAll('input[name="selected[]"]')).map(
-        (cb) => cb.value
-      );
+      files = Array.from(form.querySelectorAll('input[name="selected[]"]')).map((cb) => cb.value);
     } else if (submitter.id === "zipSelected") {
       // Pobierz tylko zaznaczone
-      files = Array.from(
-        form.querySelectorAll('input[name="selected[]"]:checked')
-      ).map((cb) => cb.value);
+      files = Array.from(form.querySelectorAll('input[name="selected[]"]:checked')).map((cb) => cb.value);
     }
 
     if (files.length === 0) {
@@ -185,9 +181,7 @@ function startZipProgress(files) {
 
 const tableBody = document.querySelector(".file-table tbody");
 const selectAllCheckbox = document.getElementById("selectAll");
-const checkboxes = Array.from(
-  document.querySelectorAll('input[name="selected[]"]')
-);
+const checkboxes = Array.from(document.querySelectorAll('input[name="selected[]"]'));
 
 let anchor = null;
 let snapshot = []; // Stan wszystkich checkboxów z momentu wybrania kotwicy
@@ -292,13 +286,9 @@ const btnDelete = document.querySelector("#deleteSelected");
 if (btnDelete) {
   btnDelete.addEventListener("click", function () {
     // Pobieramy zaznaczone wiersze, żeby sprawdzić czy są tam foldery
-    const selectedRows = Array.from(
-      document.querySelectorAll(".file-table tbody tr")
-    ).filter((row) => row.querySelector('input[name="selected[]"]:checked'));
+    const selectedRows = Array.from(document.querySelectorAll(".file-table tbody tr")).filter((row) => row.querySelector('input[name="selected[]"]:checked'));
 
-    const selectedNames = selectedRows.map(
-      (row) => row.querySelector('input[name="selected[]"]').value
-    );
+    const selectedNames = selectedRows.map((row) => row.querySelector('input[name="selected[]"]').value);
     const hasDirectory = selectedRows.some((row) => row.dataset.isdir === "1");
 
     if (selectedNames.length === 0) return;
@@ -306,10 +296,7 @@ if (btnDelete) {
     // Budujemy dynamiczny komunikat
     let msg = `Czy na pewno chcesz usunąć te elementy: ${selectedNames.length} szt.?`;
     if (hasDirectory) {
-      msg =
-        `UWAGA! Wybrano co najmniej jeden folder.\n\n` +
-        `Usunięcie folderu spowoduje BEZPOWROTNE skasowanie wszystkich plików i podfolderów wewnątrz.\n\n` +
-        `Czy na pewno chcesz kontynuować?`;
+      msg = `UWAGA! Wybrano co najmniej jeden folder.\n\n` + `Usunięcie folderu spowoduje BEZPOWROTNE skasowanie wszystkich plików i podfolderów wewnątrz.\n\n` + `Czy na pewno chcesz kontynuować?`;
     }
 
     if (confirm(msg)) {
@@ -352,16 +339,11 @@ function updateSelectedMessage() {
     const row = checkedCb.closest("tr");
     // Find the 'size' td within that row and get its data-value
     const sizeTd = row.querySelector("td.size");
-    if (sizeTd && sizeTd.dataset.value)
-      totalSize += parseFloat(sizeTd.dataset.value);
+    if (sizeTd && sizeTd.dataset.value) totalSize += parseFloat(sizeTd.dataset.value);
     if (row.dataset.isdir === "1") directoryCount++;
     if (row.dataset.isdir === "0") fileCount++;
   });
-  document.getElementById("selectedMessage").innerText = `Selected ${
-    rows.length
-  } items (directories: ${directoryCount}, files: ${fileCount}), total size: ${humanSize(
-    totalSize
-  )}.`;
+  document.getElementById("selectedMessage").innerText = `Selected ${rows.length} items (directories: ${directoryCount}, files: ${fileCount}), total size: ${humanSize(totalSize)}.`;
 }
 
 function humanSize(bytes) {
@@ -371,4 +353,104 @@ function humanSize(bytes) {
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
 
   return (bytes / Math.pow(1024, i)).toFixed(2) + " " + units[i];
+}
+
+/**
+ * Handles the file filtering logic with wildcard support (* and ?).
+ * Comments in English as requested.
+ */
+document.addEventListener("DOMContentLoaded", function () {
+  const filterInput = document.getElementById("filter");
+  const tableRows = document.querySelectorAll(".file-table tbody tr");
+
+  if (!filterInput) return;
+
+  filterInput.addEventListener("input", function () {
+    const query = this.value.trim();
+
+    // If query is empty, show all rows and exit
+    if (query === "") {
+      tableRows.forEach((row) => (row.style.display = ""));
+      return;
+    }
+
+    // Convert glob-like pattern to Regular Expression
+    // 1. Escape special regex characters except * and ?
+    // 2. Replace * with .* (any characters)
+    // 3. Replace ? with . (exactly one character)
+    let regexPattern = query
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&") // Escape regex special chars
+      .replace(/\\\*/g, ".*") // Convert * to .*
+      .replace(/\\\?/g, "."); // Convert ? to .
+
+    // If user didn't use any wildcards, treat it as a "contains" search
+    if (!query.includes("*") && !query.includes("?")) {
+      regexPattern = ".*" + regexPattern + ".*";
+    }
+
+    const regex = new RegExp("^" + regexPattern + "$", "i");
+
+    tableRows.forEach((row) => {
+      // Find the link in the 3rd column which contains the filename
+      const fileNameCell = row.cells[2];
+      if (!fileNameCell) return;
+
+      const fileName = fileNameCell.querySelector("a").innerText;
+
+      // Toggle visibility based on regex match
+      if (regex.test(fileName)) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    });
+    updateVisibleCount(query);
+  });
+
+  /**
+   * Block Enter key submission and handle visible items selection.
+   * This won't affect hidden (filtered out) checkboxes.
+   */
+  filterInput.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      // Stop form from submitting
+      event.preventDefault();
+
+      // Target only rows that are currently visible
+      const visibleRows = document.querySelectorAll('.file-table tbody tr:not([style*="display: none"])');
+      const visibleCheckboxes = Array.from(visibleRows)
+        .map((row) => row.querySelector('input[type="checkbox"]'))
+        .filter((cb) => cb !== null);
+
+      if (visibleCheckboxes.length > 0) {
+        // Check if all visible items are already checked
+        const allChecked = visibleCheckboxes.every((cb) => cb.checked);
+
+        // Toggle selection for visible items only
+        visibleCheckboxes.forEach((cb) => {
+          cb.checked = !allChecked;
+        });
+
+        // Optional: trigger your existing selection message update
+        if (typeof updateSelectedMessage === "function") {
+          updateSelectedMessage();
+        }
+      }
+    }
+  });
+});
+
+/**
+ * Optional helper to update the UI after filtering
+ */
+function updateVisibleCount(query) {
+  const visibleRows = document.querySelectorAll('.file-table tbody tr:not([style*="display: none"])').length;
+  //const totalRows = document.querySelectorAll('.file-table tbody tr').length;
+
+  const message = document.getElementById("showingMessage");
+  if (query !== "") {
+    message.innerText = `filtering ${visibleRows} of them`;
+  } else {
+    message.innerText = "displaying all of them";
+  }
 }
