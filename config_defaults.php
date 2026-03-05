@@ -3,6 +3,7 @@
 $configDefaults = [
     'showHiddenFiles' => false,
     'titleSuffix'     => ' [kbIndex]',
+    'displayFilter'   => true,
     'maxSizeLimit'    => 20 * 1024 * 1024 * 1024, // 20 GB
     'maxDiskSpaceLimit' => 20 * 1024 * 1024, // 20 MB
     'displayNewestItem' => true,

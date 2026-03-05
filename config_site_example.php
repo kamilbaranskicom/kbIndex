@@ -3,6 +3,7 @@
 $config = array_merge($config, [
     //    'showHiddenFiles' => false,
     //    'titleSuffix'     => ' [kbIndex @ '.$_SERVER['HTTP_HOST'].']',
+    // 'displayFilter'   => true,
     'maxSizeLimit'    => 4 * 1024 * 1024 * 1024, // 4 GB
     'maxDiskSpaceLimit' => 1 * 1024 * 1024 * 1024, // 1 GB
     //    'displayNewestItem' => true,

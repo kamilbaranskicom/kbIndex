@@ -77,8 +77,8 @@ a {
 }
 
 .file-table .icon img {
-  width:20px;
-  height:22px;
+  width: 20px;
+  height: 22px;
 }
 
 .file-table td.checkbox {
@@ -216,16 +216,7 @@ th.desc {
 .progress-bar-fill {
   height: 100%;
   background-color: #2196f3;
-  background-image: linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.15) 25%,
-    transparent 25%,
-    transparent 50%,
-    rgba(255, 255, 255, 0.15) 50%,
-    rgba(255, 255, 255, 0.15) 75%,
-    transparent 75%,
-    transparent
-  );
+  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
   background-size: 40px 40px;
   transition: width 0.4s ease;
   animation: move-stripes 1s linear infinite;
@@ -361,4 +352,25 @@ th.desc {
   footer {
     border-top: 1px solid #333;
   }
+}
+
+#filter:not(:placeholder-shown) {
+  background-color: #fff9c4; /* Light yellow */
+  border-color: #fbc02d; /* Darker yellow border */
+  outline: none;
+}
+/* Show the clear button only when there is text */
+#filter::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+/* Styling the placeholder for the filter input */
+#filter::placeholder {
+  text-align:right;
+  opacity: 0.4; /* Standard opacity (0.0 to 1.0) */
+  color: #666; /* Optional: define a base color */
+  transition: opacity 0.3s; /* Smooth transition when focusing */
+}
+/* Optional: Make it slightly more visible when the user clicks the field */
+#filter:focus::placeholder {
+  opacity: 0.6;
 }
