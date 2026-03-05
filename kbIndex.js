@@ -371,6 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // If query is empty, show all rows and exit
     if (query === "") {
       tableRows.forEach((row) => (row.style.display = ""));
+      updateVisibleCount(query);
       return;
     }
 
@@ -449,8 +450,8 @@ function updateVisibleCount(query) {
 
   const message = document.getElementById("showingMessage");
   if (query !== "") {
-    message.innerText = `filtering ${visibleRows} of them`;
+    message.innerText = `filtering ${visibleRows} of them,`;
   } else {
-    message.innerText = "displaying all of them";
+    message.innerText = "displaying all of them,";
   }
 }
