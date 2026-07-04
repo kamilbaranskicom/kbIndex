@@ -22,7 +22,8 @@ $config = array_merge($config, [
     //        'node_modules',
     //        'kbIndex.activity.log',
     //    ],
-        'permissions'     => [
+    'allowDownload'   => true,
+    'permissions'     => [
         '/'             => ['allowDelete' => false], // Główny folder zablokowany
         '/uploads'      => ['allowDelete' => true],  // Można kasować w /uploads
         '/temp'         => ['allowDelete' => true],

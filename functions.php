@@ -724,8 +724,10 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
 
         <form id="kbIndexForm" action="?" method="post">
             <p class="download-buttons">
-                <button type="submit" name="action" value="zipAll" id="zipAll">📦 Download all</button>
-                <button type="submit" name="action" value="zipSelected" id="zipSelected">📁 Download selected</button>
+                <?php if ($config['allowDownload']) { ?>}
+                    <button type="submit" name="action" value="zipAll" id="zipAll">📦 Download all</button>
+                    <button type="submit" name="action" value="zipSelected" id="zipSelected">📁 Download selected</button>
+                <?php }; ?>
                 <?php if (isActionAllowed('allowDelete', $path, $config)) { ?>
                     <button type="button" name="action" value="delete" id="deleteSelected" class="hidden btn-danger">🗑️ Delete selected</button>
                 <?php }; ?>
