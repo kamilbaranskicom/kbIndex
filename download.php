@@ -26,13 +26,39 @@ function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $c
 
     // (if user needs all the files, this is the same list as $allowedFiles.)
     if ($allFiles) {
-        $files = $allowedFiles;
+        $files = array_column($allowedFiles, 'name');
     }
 
     // reject the unallowed files from $files
     $files = filterAllowedFiles($files, $allowedFiles, $physicalPath, $map);
     // THE $FILES LIST IS LEGIT. ALL THE FILES ARE ALLOWED TO ARCHIVE/DOWNLOAD.
     // TODO: shall we check the subdirectories and use allowed files only? At the moment we allow for all the files (subdirectory/*)
+
+    // If only one file is requested and it is a regular file, do not make a ZIP!
+    if (!$allFiles && count($files) === 1) {
+        $singleFile = reset($files);
+        $fullPath = $physicalPath . DIRECTORY_SEPARATOR . $singleFile;
+        if (is_file($fullPath)) {
+            if ($isAsyncRequest) {
+                header('Content-Type: text/event-stream');
+                header('Cache-Control: no-cache');
+                header('Connection: keep-alive');
+                while (ob_get_level()) {
+                    ob_end_clean();
+                }
+                echo "data: " . json_encode([
+                    'percent' => 100,
+                    'status' => 'done',
+                    'downloadUrl' => '?action=download&file=' . rawurlencode($singleFile)
+                ]) . "\n\n";
+                flush();
+                exit;
+            } else {
+                sendDirectFile($fullPath, $singleFile);
+                exit;
+            }
+        }
+    }
 
     // get the sum of file sizes.
     $totalWeight = 0;
@@ -47,11 +73,21 @@ function handleZipRequest(string $physicalPath, $files, bool $allFiles, array $c
 
     // Validate total archive size before processing
     if ($totalWeight > $config['maxSizeLimit']) {
-        die("Error: Selected payload (" . humanSize($totalWeight) . ") exceeds the " . humanSize($config['maxSizeLimit']) . " limit.");
+        $msg = "Error: Selected payload (" . humanSize($totalWeight) . ") exceeds the " . humanSize($config['maxSizeLimit']) . " limit.";
+        if ($isAsyncRequest) {
+            echo "data: " . json_encode(['type' => 'error', 'message' => $msg]) . "\n\n";
+            exit;
+        }
+        die($msg);
     }
     // Validate that we have enough space to create the archive
     if ($totalWeight > (disk_free_space(sys_get_temp_dir()) - $config['maxDiskSpaceLimit'])) {
-        die("Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . " + additional " . humanSize($config['maxDiskSpaceLimit']) . ".");
+        $msg = "Error: Not enough disk space to create the archive. Required: " . humanSize($totalWeight) . " + additional " . humanSize($config['maxDiskSpaceLimit']) . ".";
+        if ($isAsyncRequest) {
+            echo "data: " . json_encode(['type' => 'error', 'message' => $msg]) . "\n\n";
+            exit;
+        }
+        die($msg);
     }
     if (!empty($filesToZip)) {
         streamZip($filesToZip, $name, $physicalPath, $totalWeight, $allFiles, $isAsyncRequest);
@@ -148,7 +184,7 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
 
     // Calculate stats for the user feedback
     $stats = array_reduce($files, function ($carry, $item) {
-        !empty($item['is_dir']) ? $carry['dirs']++ : $carry['files']++;
+        is_dir($item) ? $carry['dirs']++ : $carry['files']++;
         return $carry;
     }, ['dirs' => 0, 'files' => 0]);
     $stats['totalWeight'] = $totalWeight;
@@ -171,6 +207,36 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
 
 
 /**
+ * Sends a file directly to the client as an attachment download (not inline).
+ *
+ * @param string $filePath The absolute path to the file on disk.
+ * @param string|null $downloadName The filename for Content-Disposition.
+ * @return void
+ */
+function sendDirectFile(string $filePath, ?string $downloadName = null): void {
+    if (file_exists($filePath) && is_file($filePath)) {
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        $downloadName = $downloadName ?: basename($filePath);
+        $safeAsciiName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $downloadName);
+        $encodedName = rawurlencode($downloadName);
+
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . $safeAsciiName . '"; filename*=UTF-8\'\'' . $encodedName);
+        header('Content-Length: ' . filesize($filePath));
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Pragma: no-cache');
+
+        readfile($filePath);
+        exit;
+    }
+}
+
+
+/**
  * Sends the generated ZIP file to the client for download and deletes the file.
  *
  * @param string $tmpZip The temporary path to the generated ZIP file.
@@ -179,10 +245,15 @@ function streamZip(array $files, string $baseName, string $currentPath, $totalWe
  */
 function sendZipFile(string $tmpZip, string $finalFileName, bool $deleteAfter = true): bool {
     if (file_exists($tmpZip)) {
-        if (ob_get_level()) ob_end_clean();
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        $safeAsciiName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $finalFileName);
+        $encodedName = rawurlencode($finalFileName);
 
         header('Content-Type: application/zip');
-        header('Content-Disposition: attachment; filename="' . basename($finalFileName) . '"');
+        header('Content-Disposition: attachment; filename="' . $safeAsciiName . '"; filename*=UTF-8\'\'' . $encodedName);
         header('Content-Length: ' . filesize($tmpZip));
         header('Cache-Control: no-cache, must-revalidate');
         header('Pragma: no-cache');
@@ -303,16 +374,44 @@ function sendProgressStream(string $tmpZip, string $finalFileName, string $marke
 
 
 /**
- * Handles the download of the generated ZIP file.
+ * Handles the download of either a generated ZIP file or a single direct file.
  *
- * Retrieves the temporary file name and final file name from the request,
- * checks for file existence, and streams the file to the client.
+ * @param string $physicalPath The physical path of the current directory.
+ * @param array $config The configuration array.
+ * @return void
  */
-function handleDownloadAction() {
-    $tmpZip = basename($_GET['tempFileName']);
+function handleDownloadAction(string $physicalPath = '', array $config = []): void {
+    // 1. Direct single file download
+    if (!empty($_GET['file'])) {
+        if (!empty($config) && empty($config['allowDownload'])) {
+            header("HTTP/1.1 403 Forbidden");
+            die("Download not allowed.");
+        }
+
+        $fileName = basename($_GET['file']);
+        $allowedFiles = getFileList($physicalPath, $config);
+        $filtered = filterAllowedFiles([$fileName], $allowedFiles, $physicalPath, $map);
+
+        if (empty($filtered)) {
+            header("HTTP/1.1 404 Not Found");
+            die("File not found or not allowed.");
+        }
+
+        $fullPath = $physicalPath . DIRECTORY_SEPARATOR . $fileName;
+        if (!is_file($fullPath)) {
+            header("HTTP/1.1 404 Not Found");
+            die("File not found.");
+        }
+
+        sendDirectFile($fullPath, $fileName);
+        exit;
+    }
+
+    // 2. Temporary ZIP download
+    $tmpZip = basename($_GET['tempFileName'] ?? '');
     if (!$tmpZip) {
         die("No fileName given.");
-    };
+    }
     $finalFileName = basename($_GET['finalFileName'] ?? 'download_' . date('Ymd-His') . '.zip');
 
     $tmpZip = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $tmpZip;
@@ -320,6 +419,9 @@ function handleDownloadAction() {
     if (file_exists($tmpZip)) {
         sendZipFile($tmpZip, $finalFileName);
         exit;
+    } else {
+        header("HTTP/1.1 404 Not Found");
+        die("Archive file not found or expired.");
     }
 }
 
@@ -335,6 +437,25 @@ function handlePostRequest(string $physicalPath, string $action, array $config):
             echo "data: " . json_encode(['type' => 'error', 'message' => 'Nie wybrano żadnych plików do pobrania.']) . "\n\n";
             exit;
         }
+
+        // If exactly one file is selected and it is a regular file, download directly without ZIP
+        if (count($selectedFiles) === 1) {
+            $allowedFiles = getFileList($physicalPath, $config);
+            $filtered = filterAllowedFiles($selectedFiles, $allowedFiles, $physicalPath, $map);
+            if (!empty($filtered)) {
+                $singleFile = reset($filtered);
+                $fullPath = $physicalPath . DIRECTORY_SEPARATOR . $singleFile;
+                if (is_file($fullPath)) {
+                    if (!empty($config) && empty($config['allowDownload'])) {
+                        header("HTTP/1.1 403 Forbidden");
+                        die("Download not allowed.");
+                    }
+                    sendDirectFile($fullPath, $singleFile);
+                    exit;
+                }
+            }
+        }
+
         handleZipRequest($physicalPath, $selectedFiles, false, $config, false);
     }
 }

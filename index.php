@@ -58,12 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
         case 'zip':
             // PHASE 1: Calculate weight and start SSE stream
-            handleZipRequest($physicalPath, array_map('basename', json_decode($_GET['files'], true)), isset($_GET['all']), $config, true);
+            handleZipRequest($physicalPath, array_map('basename', json_decode($_GET['files'] ?? '[]', true) ?: []), isset($_GET['all']), $config, true);
             break;
 
         case 'download':
             // PHASE 2: Serve the actual binary .zip file
-            handleDownloadAction();
+            handleDownloadAction($physicalPath, $config);
             break;
 
         case 'delete':

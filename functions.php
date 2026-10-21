@@ -8,9 +8,9 @@
  * @return array The merged configuration array.
  */
 function loadConfigs(string $defaultConfig, string $siteConfig, string $autoindexConfig): array {
-    require_once $defaultConfig;
+    require $defaultConfig;
     if (file_exists($siteConfig)) {
-        require_once $siteConfig;
+        require $siteConfig;
     }
 
     // 1. defaults
@@ -386,7 +386,7 @@ function resolveIcon(SplFileInfo $file, array $config, FileInfoAnalyzer $analyze
     }
 
     // Fallback to the default system icon
-    return $config['defaultIcon'];
+    return $config['defaultIcon'] ?? '';
 }
 
 
@@ -709,7 +709,7 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
         <title>Index of <?php echo safeHtml($path);
                         echo safeHtml($config['titleSuffix']); ?></title>
         <link rel="stylesheet" href="<?= KB_INDEX_URI; ?>kbIndex.css">
-        <?php if (file_exists('kbIndex_site.css')) { ?>
+        <?php if (file_exists(__DIR__ . '/kbIndex_site.css')) { ?>
             <link rel="stylesheet" href="<?= KB_INDEX_URI; ?>kbIndex_site.css"><?php }; ?>
         <script src="<?= KB_INDEX_URI; ?>kbIndex.js" defer></script>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -724,7 +724,7 @@ function renderHTML($path, $fileList, $config, $breadcrumbs, $sort = 'name', $or
 
         <form id="kbIndexForm" action="?" method="post">
             <p class="download-buttons">
-                <?php if ($config['allowDownload']) { ?>}
+                <?php if ($config['allowDownload']) { ?>
                     <button type="submit" name="action" value="zipAll" id="zipAll">📦 Download all</button>
                     <button type="submit" name="action" value="zipSelected" id="zipSelected">📁 Download selected</button>
                 <?php }; ?>
