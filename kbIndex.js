@@ -63,7 +63,7 @@ function sortTable(columnName) {
       // index 2 is "name" column (according to TABLE_COLUMNS)
       const nameA = a.children[2].innerText.trim();
       const nameB = b.children[2].innerText.trim();
-      comparison2 = nameA.localeCompare(nameB, undefined, {
+      const comparison2 = nameA.localeCompare(nameB, undefined, {
         numeric: true,
         sensitivity: "base",
       });
@@ -126,7 +126,18 @@ document.addEventListener("DOMContentLoaded", () => {
       files = Array.from(form.querySelectorAll('input[name="selected[]"]')).map((cb) => cb.value);
     } else if (submitter.id === "zipSelected") {
       // Pobierz tylko zaznaczone
-      files = Array.from(form.querySelectorAll('input[name="selected[]"]:checked')).map((cb) => cb.value);
+      const checkedBoxes = Array.from(form.querySelectorAll('input[name="selected[]"]:checked'));
+      files = checkedBoxes.map((cb) => cb.value);
+
+      // Jeżeli zaznaczony jest dokładnie jeden plik (i nie jest to folder) - pobierz bezpośrednio bez tworzenia ZIPa
+      if (checkedBoxes.length === 1) {
+        const row = checkedBoxes[0].closest("tr");
+        const isDir = row && row.dataset.isdir === "1";
+        if (!isDir) {
+          downloadSingleFile(checkedBoxes[0].value);
+          return;
+        }
+      }
     }
 
     if (files.length === 0) {
@@ -137,6 +148,19 @@ document.addEventListener("DOMContentLoaded", () => {
     startZipProgress(files);
   });
 });
+
+/**
+ * Initiates direct download of a single file without ZIP compression.
+ * @param {string} fileName - Name of the file to download.
+ */
+function downloadSingleFile(fileName) {
+  const a = document.createElement("a");
+  a.href = `?action=download&file=${encodeURIComponent(fileName)}`;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
 /**
  * Initiates the download with a progress overlay.
@@ -158,6 +182,13 @@ function startZipProgress(files) {
   eventSource.onmessage = (event) => {
     // console.log(event);
     const data = JSON.parse(event.data);
+
+    if (data.type === "error" || data.status === "error") {
+      eventSource.close();
+      alert(data.message || "Wystąpił błąd podczas przygotowywania archiwum.");
+      statusBox.classList.add("hidden");
+      return;
+    }
 
     // Update your UI element
     progressBar.style.width = data.percent + "%";
@@ -192,9 +223,8 @@ function updateButtonVisibility() {
   if (!buttonAll || !buttonSelected) return;
 
   const checkedCount = checkboxes.filter((cb) => cb.checked).length;
-  const totalCount = checkboxes.length;
 
-  if (checkedCount === 0 || checkedCount === totalCount) {
+  if (checkedCount === 0) {
     buttonAll.classList.remove("hidden");
     buttonSelected.classList.add("hidden");
   } else {

@@ -23,6 +23,7 @@ $configDefaults = [
         'node_modules',
         'kbIndex.activity.log',
     ],
+    'allowDownload'   => true,
     'permissions'     => [
         '/'             => ['allowDelete' => false], // Główny folder zablokowany
         '/uploads'      => ['allowDelete' => true],  // Można kasować w /uploads
